@@ -14,6 +14,12 @@ These URLs point at third-party community projects. They are aggregators of
 free, publicly posted proxies - nobody involved operates the servers behind
 them, and they can change or disappear without notice. Review the list before
 seeding it, and see FREE_CONFIGS.md for the caveats that come with serving them.
+
+The source list below is the one published by patterniha/free-configs
+(https://github.com/patterniha/free-configs, MIT), whose approach - aggregate
+several public lists, then filter by real connectivity rather than by whether
+GitHub can reach them - this feature follows. No code from that project is
+used here; only its choice of sources.
 """
 
 import argparse
@@ -52,6 +58,15 @@ DEFAULT_SOURCES = [
         "https://raw.githubusercontent.com/iampedii/whitedns-sub/refs/heads/main/cloudflare-base64.txt",
         True,
         "whitedns cloudflare",
+    ),
+    # patterniha's own already-filtered output: an aggregate of the lists above,
+    # published as a single file. Harmless to include - duplicates are collapsed
+    # by URI hash during a refresh - and it adds whatever that project filtered
+    # in that our own pass may have missed.
+    (
+        "https://raw.githubusercontent.com/patterniha/free-configs/main/configs.txt",
+        False,
+        "patterniha (aggregated)",
     ),
 ]
 

@@ -106,6 +106,13 @@ python3 scripts/seed_free_configs.py
 python3 scripts/seed_free_configs.py --list
 ```
 
+The seeded list is the one published by
+[patterniha/free-configs](https://github.com/patterniha/free-configs) (MIT), plus that
+project's own aggregated output as a tenth source. None of its code is used here — this
+is an independent implementation of the same idea: aggregate several public lists, then
+filter by real connectivity instead of trusting the list. Sources are ordinary DB rows,
+so add, disable or remove any of them at will.
+
 …or add your own through the API:
 
 ```bash

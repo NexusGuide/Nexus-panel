@@ -1,0 +1,18 @@
+import { Spinner } from './spinner'
+import { useTranslation } from 'react-i18next'
+
+interface LoadingSpinnerProps {
+  text?: string
+  size?: 'small' | 'medium' | 'large'
+  className?: string
+}
+
+export function LoadingSpinner({ text = 'loading', size = 'medium', className = '' }: LoadingSpinnerProps) {
+  const { t } = useTranslation()
+  return (
+    <div className={`flex min-h-screen flex-col items-center justify-center ${className}`}>
+      <Spinner size={size} />
+      {text && <p className="text-muted-foreground mt-4 text-sm">{t(text)}</p>}
+    </div>
+  )
+}

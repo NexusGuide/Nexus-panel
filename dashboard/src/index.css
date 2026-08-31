@@ -1,0 +1,456 @@
+@config '../tailwind.config.js';
+@plugin 'tailwindcss-animate';
+@import 'tailwindcss';
+
+@layer base {
+  :root {
+    --background: 240 5% 96%;
+    --foreground: 240 5% 10%;
+    --muted: 240 5% 90%;
+    --muted-foreground: 240 5% 40%;
+    --card: 240 5% 98%;
+    --card-foreground: var(--foreground);
+    --popover: var(--background);
+    --popover-foreground: var(--foreground);
+    --border: 240 5% 80%;
+    --input: 240 6% 91%;
+    --input-placeholder: 240 5% 70%;
+    --primary: 216 46% 40%;
+    --primary-foreground: 240 5% 98%;
+    --secondary: 240 5% 90%;
+    --secondary-foreground: 240 5% 20%;
+    --accent: 240 5% 90%;
+    --accent-foreground: 240 5% 20%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --ring: 216 46% 40%;
+    --radius: 0.5rem;
+    --hover-primary: 216 46% 30%;
+    --hover-secondary: 240 5% 85%;
+    --hover-destructive: 0 84% 60%;
+    --success: 142 76% 36%;
+    --hover-success: 142 72% 29%;
+    --border-destructive-50: 0 72% 51%;
+    --bg-destructive-10: 0 72% 51%;
+    --hover-destructive-20: 0 72% 51%;
+    --bg-muted-50: 210 40% 96%;
+    --bg-accent-50: 210 40% 96%;
+    --bg-muted-40: 210 40% 96%;
+    --border-muted-40: 210 40% 96%;
+    --sidebar-background: 240 5% 90%;
+    --sidebar-foreground: 240 5% 20%;
+    --sidebar-primary: 216 46% 40%;
+    --sidebar-primary-foreground: 240 5% 98%;
+    --sidebar-accent: 240 5% 85%;
+    --sidebar-accent-foreground: 240 5% 10%;
+    --sidebar-border: 240 5% 80%;
+    --sidebar-ring: 216 46% 40%;
+    --sidebar-foreground-70: 240 5% 30%;
+    --snow-color: 210 80% 62%;
+    --neon-green: 81 96% 55%;
+    --background-custom: 240 5% 96%;
+    --chart-1: 221.2 83.2% 53.3%;
+    --chart-2: 212 95% 68%;
+    --chart-3: 216 92% 60%;
+    --chart-4: 210 98% 78%;
+    --chart-5: 212 97% 87%;
+    --card-shadow: none;
+    /* Scrollbar variables */
+    --scrollbar-track: 240 5% 96%;
+    --scrollbar-thumb: 240 5% 80%;
+    --scrollbar-thumb-hover: 240 5% 70%;
+    --scrollbar-thumb-active: 240 5% 60%;
+  }
+
+  .dark {
+    --chart-1: 221.2 83.2% 53.3%;
+    --chart-2: 212 95% 68%;
+    --chart-3: 216 92% 60%;
+    --chart-4: 210 98% 78%;
+    --chart-5: 212 97% 87%;
+    --background: 240 2% 11%;
+    --foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --card: 240 2% 11.5%;
+    --card-foreground: var(--foreground);
+    --popover: var(--background);
+    --popover-foreground: var(--foreground);
+    --border: 0 0% 18%;
+    --input: 240 2% 16.5%;
+    --input-placeholder: 0 0 30%;
+    --primary: 216 46% 53%;
+    --primary-foreground: 0 0% 5%;
+    --secondary: 216 46% 53%;
+    --secondary-foreground: 0 0% 5%;
+    --accent: 240 4% 16%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 98%;
+    --ring: 215 16% 47%;
+    --radius: 0.5rem;
+    --hover-primary: 216 41% 49%;
+    --hover-secondary: 216 41% 49%;
+    --hover-destructive: 0 84% 60%;
+    --success: 142 76% 36%;
+    --hover-success: 142 72% 29%;
+    --border-destructive-50: 0 72% 51%;
+    --bg-destructive-10: 0 72% 51%;
+    --hover-destructive-20: 0 72% 51%;
+    --bg-muted-50: 210 40% 96%;
+    --bg-accent-50: 210 40% 96%;
+    --bg-muted-40: 210 40% 96%;
+    --border-muted-40: 210 40% 96%;
+    --sidebar-background: 240 2% 11%;
+    --sidebar-foreground: 0 0 71%;
+    --sidebar-primary: 0 100% 81%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: var(--accent);
+    --sidebar-accent-foreground: var(--accent-foreground);
+    --sidebar-border: 0 0% 20% / 0.8;
+    --sidebar-ring: 0 0% 64%;
+    --sidebar-foreground-70: 0 0% 98%;
+    --snow-color: 0 0% 98%;
+    --neon-green: 81 96% 55%;
+    --background-custom: 240 4% 8%;
+    --card-shadow: none;
+    /* Dark mode scrollbar variables */
+    --scrollbar-track: 240 2% 11%;
+    --scrollbar-thumb: 0 0% 25%;
+    --scrollbar-thumb-hover: 0 0% 35%;
+    --scrollbar-thumb-active: 0 0% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html[data-density='compact'] {
+    font-size: 15px;
+  }
+
+  html[data-density='comfortable'] {
+    font-size: 16px;
+  }
+
+  html[data-density='spacious'] {
+    font-size: 17.5px;
+  }
+
+  html[data-surface='flat'] {
+    --card-shadow: none;
+  }
+
+  html[data-surface='subtle'] {
+    --card-shadow: none;
+  }
+
+  html[data-surface='elevated'] {
+    --card-shadow: 0 1px 2px hsl(0 0% 0% / 0.04), 0 3px 8px -2px hsl(0 0% 0% / 0.08);
+  }
+
+  html.dark[data-surface='elevated'] {
+    --card-shadow: 0 1px 2px hsl(0 0% 0% / 0.25), 0 4px 10px -2px hsl(0 0% 0% / 0.3);
+  }
+
+  body {
+    @apply bg-background font-body text-foreground;
+    overflow-x: hidden; /* Prevent horizontal scroll from drag-and-drop elements */
+    scroll-behavior: smooth; /* Smooth scrolling for better UX */
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--scrollbar-thumb) / 0.4) transparent;
+  }
+
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
+  }
+
+  /* Overlay-style thin scrollbars (Windows classic bars are ~17px without this) */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--scrollbar-thumb) / 0.4) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--scrollbar-thumb) / 0.35);
+    border: none;
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--scrollbar-thumb) / 0.55);
+  }
+
+  ::-webkit-scrollbar-thumb:active {
+    background: hsl(var(--scrollbar-thumb-active) / 0.7);
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* Thin scrollbar variant for smaller containers */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    border: none;
+  }
+
+  /* Hidden scrollbar but still scrollable */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  [data-sidebar='content'] {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  [data-sidebar='content']::-webkit-scrollbar {
+    display: none;
+  }
+
+  .dashboard-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+
+  .dashboard-scroll:hover,
+  .dashboard-scroll:focus-within,
+  .dashboard-scroll:active {
+    scrollbar-color: hsl(var(--scrollbar-thumb) / 0.45) transparent;
+  }
+
+  .dashboard-scroll::-webkit-scrollbar-thumb {
+    background: transparent;
+  }
+
+  .dashboard-scroll:hover::-webkit-scrollbar-thumb,
+  .dashboard-scroll:focus-within::-webkit-scrollbar-thumb,
+  .dashboard-scroll:active::-webkit-scrollbar-thumb {
+    background: hsl(var(--scrollbar-thumb) / 0.4);
+  }
+
+  /* Custom scrollbar for specific components */
+  .scrollbar-primary::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary) / 0.6);
+  }
+
+  .scrollbar-primary::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.8);
+  }
+
+  .scrollbar-muted::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+  }
+
+  .scrollbar-muted::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+
+  /* Fix for drag-and-drop elements causing horizontal overflow in RTL */
+  [data-rbd-draggable-id],
+  [data-rbd-drag-handle-draggable-id],
+  [data-dnd-kit-drag-overlay] {
+    max-width: 100vw !important;
+    left: 0 !important;
+    right: auto !important;
+  }
+
+  /* Ensure drag overlay elements don't extend beyond viewport */
+  [data-dnd-kit-drag-overlay] {
+    position: fixed !important;
+    z-index: 9999 !important;
+    max-width: calc(100vw - 20px) !important;
+    max-height: calc(100vh - 20px) !important;
+  }
+
+  /* Z-index management for proper layering */
+  .sidebar {
+    z-index: 40;
+  }
+
+  .sidebar-overlay {
+    z-index: 30;
+  }
+
+  .modal-overlay {
+    z-index: 50;
+  }
+
+  .dropdown-content {
+    z-index: 60;
+  }
+
+  .tooltip {
+    z-index: 70;
+  }
+
+  /* Fix for responsive modal positioning */
+  [data-radix-dialog-content] {
+    z-index: 50 !important;
+  }
+
+  [data-radix-select-content] {
+    z-index: 60 !important;
+  }
+
+  /* Ensure proper responsive behavior for sidebar */
+  @media (max-width: 1024px) {
+    .sidebar {
+      z-index: 45;
+    }
+  }
+
+  /* Fix for mobile sidebar overlay */
+  [data-sidebar='sidebar'][data-mobile='true'] {
+    z-index: 50;
+  }
+
+  /* Ensure proper spacing when sidebar is collapsed */
+  .group\/sidebar-wrapper[data-state='collapsed'] {
+    --sidebar-width: 3rem;
+  }
+
+  /* Fix for content area when sidebar is collapsed */
+  .group\/sidebar-wrapper[data-state='collapsed'] ~ main {
+    margin-left: 3rem;
+  }
+
+  /* Responsive fixes for smaller screens */
+  @media (max-width: 768px) {
+    .group\/sidebar-wrapper[data-state='collapsed'] ~ main {
+      margin-left: 0;
+    }
+  }
+
+  /* Enhanced styling for collapsed sidebar icons */
+  [data-sidebar='sidebar'][data-collapsible='icon'] .sidebar-icon-button {
+    @apply border-sidebar-border bg-sidebar-accent/50 hover:border-sidebar-accent-foreground/20 hover:bg-sidebar-accent h-8 w-8 rounded-md border transition-all duration-200;
+  }
+
+  /* Popover styling for collapsed sidebar */
+  [data-sidebar='sidebar'][data-collapsible='icon'] [data-radix-popover-content] {
+    @apply border-sidebar-border bg-sidebar shadow-lg;
+  }
+
+  /* Smooth transitions for sidebar state changes */
+  [data-sidebar='sidebar'] {
+    @apply transition-all duration-300 ease-in-out;
+  }
+
+  /* Icon-only button styling */
+  .sidebar-icon-only {
+    @apply flex h-8 w-8 items-center justify-center rounded-md;
+  }
+
+  .snowfall {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 0;
+  }
+
+  .snowfall ~ * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .snowfall__item {
+    position: absolute;
+    left: var(--snow-x);
+    top: -12vh;
+    width: var(--snow-size);
+    height: var(--snow-size);
+    opacity: var(--snow-opacity);
+    animation: snowfall-fall var(--snow-duration) linear infinite;
+    animation-delay: var(--snow-delay);
+  }
+
+  .snowfall__sway {
+    width: 100%;
+    height: 100%;
+    display: block;
+    color: hsl(var(--snow-color));
+    animation: snowfall-sway var(--snow-sway-duration) ease-in-out infinite;
+    animation-delay: var(--snow-delay);
+  }
+
+  .snowfall__dot {
+    width: 100%;
+    height: 100%;
+    border-radius: 9999px;
+    background: currentColor;
+  }
+
+  .snowfall__icon {
+    width: 100%;
+    height: 100%;
+    display: block;
+    fill: currentColor;
+  }
+
+  @keyframes snowfall-fall {
+    0% {
+      transform: translate3d(0, -12vh, 0);
+    }
+    100% {
+      transform: translate3d(0, 112vh, 0);
+    }
+  }
+
+  @keyframes snowfall-sway {
+    0% {
+      transform: translateX(calc(var(--snow-sway) * -1));
+    }
+    50% {
+      transform: translateX(var(--snow-sway));
+    }
+    100% {
+      transform: translateX(calc(var(--snow-sway) * -1));
+    }
+  }
+}
+
+@layer utilities {
+  /* Scrollbar utility classes */
+  .scrollbar-default {
+    scrollbar-width: auto;
+    scrollbar-color: hsl(var(--scrollbar-thumb)) hsl(var(--scrollbar-track));
+  }
+
+  .scrollbar-thin-util {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--scrollbar-thumb)) hsl(var(--scrollbar-track));
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}

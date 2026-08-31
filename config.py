@@ -129,6 +129,38 @@ class SubscriptionEnvSettings(EnvSettings):
         return (self.xray_path or self.fallback_path).strip("/")
 
 
+class FreeConfigsSettings(EnvSettings):
+    """Free-configs add-on (fork feature).
+
+    Harvests proxy URIs from public community lists, health-checks them, and
+    appends the healthy ones to subscription output for opted-in users.
+    Disabled by default: the panel behaves exactly like upstream until
+    FREE_CONFIGS_ENABLED is turned on.
+    """
+
+    enabled: bool = Field(default=False, validation_alias="FREE_CONFIGS_ENABLED")
+    # "all" -> every user gets them, "groups" -> only members of opted-in groups
+    mode: str = Field(default="all", validation_alias="FREE_CONFIGS_MODE")
+    refresh_interval: int = Field(default=86400, gt=0, validation_alias="FREE_CONFIGS_REFRESH_INTERVAL")
+    fetch_timeout: int = Field(default=20, gt=0, validation_alias="FREE_CONFIGS_FETCH_TIMEOUT")
+    health_check: bool = Field(default=True, validation_alias="FREE_CONFIGS_HEALTH_CHECK")
+    tcp_timeout: float = Field(default=3.0, gt=0, validation_alias="FREE_CONFIGS_TCP_TIMEOUT")
+    max_concurrency: int = Field(default=50, gt=0, validation_alias="FREE_CONFIGS_MAX_CONCURRENCY")
+    # 0 = no cap
+    max_configs: int = Field(default=0, ge=0, validation_alias="FREE_CONFIGS_MAX_CONFIGS")
+    max_per_subscription: int = Field(default=0, ge=0, validation_alias="FREE_CONFIGS_MAX_PER_SUBSCRIPTION")
+    # prepended to each free entry's remark so users can tell them apart in their client
+    remark_prefix: str = Field(default="🆓", validation_alias="FREE_CONFIGS_REMARK_PREFIX")
+
+    @field_validator("mode", mode="after")
+    @classmethod
+    def validate_mode(cls, value: str) -> str:
+        value = (value or "").strip().lower()
+        if value not in ("all", "groups"):
+            raise ValueError('FREE_CONFIGS_MODE must be either "all" or "groups"')
+        return value
+
+
 class JwtSettings(EnvSettings):
     access_token_expire_minutes: int = Field(default=1440, validation_alias="JWT_ACCESS_TOKEN_EXPIRE_MINUTES")
 
@@ -225,6 +257,7 @@ auth_settings = AuthSettings()
 usage_settings = UsageSettings()
 job_settings = JobSettings()
 feature_settings = FeatureSettings()
+free_configs_settings = FreeConfigsSettings()
 
 if not database_settings.is_postgresql:
     usage_settings.enable_recording_nodes_stats = False

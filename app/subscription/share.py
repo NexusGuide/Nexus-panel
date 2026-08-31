@@ -9,6 +9,7 @@ from jdatetime import date as jd
 from app.core.hosts import host_manager
 from app.db.crud.wireguard import pick_peer_ip_for_inbound
 from app.db.models import UserStatus
+from app.free_configs.subscription import append_free_configs
 from app.models.status_emojis import STATUS_EMOJIS
 from app.models.subscription import SubscriptionInboundData
 from app.models.user import UsersResponseWithInbounds
@@ -484,6 +485,9 @@ async def process_inbounds_and_tags(
                 inbound=inbound_copy,
                 settings=settings,
             )
+
+    # fork feature: append community free configs for eligible users (no-op when disabled)
+    await append_free_configs(conf, user)
 
     return conf.render()
 

@@ -6,6 +6,7 @@ from . import (
     api_key,
     client_template,
     core,
+    free_configs,
     group,
     home,
     host,
@@ -38,6 +39,7 @@ routers = [
     subscription.router,
     user_template.router,
     hwid.router,
+    free_configs.router,
 ]
 
 for router in routers:

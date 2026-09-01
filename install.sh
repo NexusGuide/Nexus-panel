@@ -88,6 +88,9 @@ write_env() {
 SQLALCHEMY_DATABASE_URL=sqlite+aiosqlite:///${DATA_DIR}/db.sqlite3
 UVICORN_HOST=${LISTEN}
 UVICORN_PORT=${PORT}
+# Swagger at /docs and the OpenAPI schema. Handy for checking the API - and for
+# confirming the free-configs routes are registered. Set to false to hide them.
+DOCS=true
 
 # --- free configs add-on -------------------------------------------------
 # Community proxy lists are harvested, TCP health-checked, and appended to the

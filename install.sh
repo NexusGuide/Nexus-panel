@@ -102,7 +102,9 @@ EOF
     fi
 
     info "pulling and restarting ..."
-    if ! compose pull; then
+    if docker image inspect "$IMAGE" >/dev/null 2>&1; then
+        info "using the local image ${IMAGE} (already built here, skipping pull)"
+    elif ! compose pull; then
         warn "could not pull ${IMAGE}"
         warn "if the GHCR package is still private, make it public:"
         warn "  https://github.com/${REPO} -> Packages -> Package settings -> Change visibility"

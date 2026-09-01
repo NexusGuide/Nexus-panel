@@ -187,6 +187,63 @@ stays cheap:
 The models live in `app/free_configs/models.py` and register themselves on the shared
 `Base.metadata`, so `app/db/models.py` is untouched.
 
+## Testing the fork end to end
+
+The repo's main `docker-compose.yml` pulls the **published upstream image**, so it will
+not run this fork's code. Use the test compose file, which builds from source:
+
+```bash
+docker compose -f docker-compose.test.yml up --build
+```
+
+Watch the startup log for the migration:
+
+```
+INFO  [alembic.runtime.migration] Running upgrade 7c4bd5128e62 -> 9f2c1a7b4e05, add free configs tables
+```
+
+Then, in a second terminal, exercise the feature without needing to log in — the seed
+script and the refresh both run directly against the service layer:
+
+```bash
+# 1. add the community source lists
+docker compose -f docker-compose.test.yml exec panel python scripts/seed_free_configs.py
+
+# 2. run one full refresh: fetch -> parse -> dedupe -> TCP health check -> store
+docker compose -f docker-compose.test.yml exec panel python -c "
+import asyncio, json
+from app.free_configs.service import refresh_pool
+print(json.dumps(asyncio.run(refresh_pool()), indent=2))
+"
+
+# 3. see what landed in the pool
+docker compose -f docker-compose.test.yml exec panel python scripts/seed_free_configs.py --list
+```
+
+A healthy run prints something like:
+
+```json
+{
+  "sources": 10,
+  "fetched": 4831,
+  "unique": 3902,
+  "healthy": 271,
+  "duration_seconds": 44.6,
+  "errors": []
+}
+```
+
+`errors` lists any source that failed to download — a dead source is expected from time
+to time and does not fail the run.
+
+To check the API surface, open <http://localhost:8000/docs> and look for the
+**FreeConfigs** tag, or log in with `admin` / `admin` (only works because the test
+compose sets `DEBUG=true`) and call `GET /api/free-configs/status`.
+
+Finally, confirm the configs actually reach a subscription: create a user in the panel,
+open their subscription URL, and the free entries appear at the end of the list with the
+`🆓` prefix. Remember this only applies to the `links` / `links_base64` formats.
+
 ## Tests
 
 ```bash

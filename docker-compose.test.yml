@@ -1,0 +1,43 @@
+# Build-and-run THIS fork, for testing the free-configs feature.
+#
+# The main docker-compose.yml pulls the published upstream image
+# (pasarguard/panel:latest) - it does NOT contain this fork's code. Use this
+# file instead when you want to run what you actually built.
+#
+#   docker compose -f docker-compose.test.yml up --build
+#
+# Differences from the production compose file:
+#   - builds from source instead of pulling an image
+#   - publishes port 8000 instead of network_mode: host (which is Linux-only,
+#     so the default file does not work on Docker Desktop for Windows/macOS)
+#   - SQLite in a named volume: no external database needed for a test run
+#   - DEBUG=true so the SUDO_USERNAME/SUDO_PASSWORD login works without going
+#     through the CLI owner-bootstrap flow. Never do this in production.
+
+services:
+  panel:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - pasarguard-test-data:/var/lib/pasarguard
+    environment:
+      # --- test-only conveniences -------------------------------------------
+      DEBUG: "true"
+      DOCS: "true"
+      SUDO_USERNAME: "admin"
+      SUDO_PASSWORD: "admin"
+      SQLALCHEMY_DATABASE_URL: "sqlite+aiosqlite:////var/lib/pasarguard/db.sqlite3"
+      UVICORN_HOST: "0.0.0.0"
+      UVICORN_PORT: "8000"
+      # --- the feature under test -------------------------------------------
+      FREE_CONFIGS_ENABLED: "true"
+      FREE_CONFIGS_MODE: "all"
+      # keep the first test run quick: cap the pool and use a short timeout
+      FREE_CONFIGS_MAX_CONFIGS: "300"
+      FREE_CONFIGS_TCP_TIMEOUT: "2"
+      FREE_CONFIGS_MAX_CONCURRENCY: "80"
+
+volumes:
+  pasarguard-test-data:

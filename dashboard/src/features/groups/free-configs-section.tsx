@@ -137,16 +137,20 @@ const FreeConfigsSection = forwardRef<FreeConfigsSectionHandle, FreeConfigsSecti
 
   if (!available && !loading) return null
 
+  // Belt and braces. The CSS below keeps a long name from stretching the
+  // dialog, but these names run to sixty-odd characters and a hard cap means
+  // the layout cannot depend on truncation behaving.
   const label = (config: PoolConfig) => {
     const name = config.remark || sniOf(config.uri) || config.address
-    return `${config.protocol} · ${name}`
+    const trimmed = name.length > 44 ? name.slice(0, 43) + '…' : name
+    return `${config.protocol} · ${trimmed}`
   }
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <label className="text-sm font-medium">Free Configs</label>
-        <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+    <div className="w-full max-w-full min-w-0 space-y-2 overflow-hidden">
+      <div className="flex items-center justify-between gap-2">
+        <label className="shrink-0 text-sm font-medium">Free Configs</label>
+        <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs text-muted-foreground">
           <input type="checkbox" checked={enabled} onChange={event => setEnabled(event.target.checked)} />
           Give this group free configs
         </label>
@@ -164,8 +168,8 @@ const FreeConfigsSection = forwardRef<FreeConfigsSectionHandle, FreeConfigsSecti
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">
+            <div className="flex items-center justify-between gap-2">
+              <p className="min-w-0 truncate text-xs text-muted-foreground">
                 {chosen.length === 0
                   ? 'Nothing picked — this group gets every free config.'
                   : `${chosen.length} picked.`}
@@ -177,12 +181,13 @@ const FreeConfigsSection = forwardRef<FreeConfigsSectionHandle, FreeConfigsSecti
               )}
             </div>
 
-            <Command className="mb-3 rounded-md border">
+            <Command className="mb-3 w-full max-w-full min-w-0 overflow-hidden rounded-md border">
               <CommandInput placeholder="Search free configs..." />
               <CommandEmpty>No free configs in the pool yet.</CommandEmpty>
-              <CommandGroup dir="ltr" className="max-h-40 overflow-auto">
+              <CommandGroup dir="ltr" className="max-h-40 w-full max-w-full overflow-auto">
                 {configs.map(config => (
                   <CommandItem
+                    className="flex items-center gap-2 overflow-hidden"
                     key={config.uri_hash}
                     value={`${config.protocol} ${config.address} ${sniOf(config.uri)} ${config.remark || ''}`}
                     onSelect={() =>
@@ -195,23 +200,25 @@ const FreeConfigsSection = forwardRef<FreeConfigsSectionHandle, FreeConfigsSecti
                   >
                     <div
                       className={cn(
-                        'mr-2 h-4 w-4 rounded-sm border',
+                        'h-4 w-4 shrink-0 rounded-sm border',
                         chosen.includes(config.uri_hash) ? 'border-primary bg-primary' : 'border-muted',
                       )}
                     />
-                    <span className="truncate">{label(config)}</span>
-                    <span className="ml-2 truncate text-xs text-muted-foreground">{config.address}</span>
+                    <span className="min-w-0 flex-1 truncate break-all">{label(config)}</span>
+                    <span className="max-w-[120px] shrink-0 truncate text-xs text-muted-foreground">
+                      {config.address}
+                    </span>
                   </CommandItem>
                 ))}
               </CommandGroup>
             </Command>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex w-full min-w-0 flex-wrap gap-2">
               {chosen.map(hash => {
                 const config = configs.find(item => item.uri_hash === hash)
                 return (
-                  <Badge key={hash} variant="secondary" className="flex items-center gap-1">
-                    <span className="max-w-[180px] truncate">{config ? label(config) : hash.slice(0, 8)}</span>
+                  <Badge key={hash} variant="secondary" className="flex max-w-full items-center gap-1 overflow-hidden">
+                    <span className="min-w-0 max-w-[180px] truncate">{config ? label(config) : hash.slice(0, 8)}</span>
                     <X
                       className="h-3 w-3 cursor-pointer"
                       onClick={() => setChosen(current => current.filter(item => item !== hash))}

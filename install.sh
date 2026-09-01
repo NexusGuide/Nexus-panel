@@ -78,23 +78,28 @@ write_env() {
         info "keeping the existing .env"
         return
     fi
+    # Compose's env_file parser is not the dotenv parser the app uses for a
+    # local .env: it does not strip spaces around `=` and it keeps quotes as
+    # part of the value. So write plain KEY=value - upstream's .env.example
+    # style (`KEY = "value"`) is only correct when the app reads the file
+    # itself.
     cat > "${INSTALL_DIR}/.env" <<EOF
 # --- panel ---------------------------------------------------------------
-SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///${DATA_DIR}/db.sqlite3"
-UVICORN_HOST = "${LISTEN}"
-UVICORN_PORT = "${PORT}"
+SQLALCHEMY_DATABASE_URL=sqlite+aiosqlite:///${DATA_DIR}/db.sqlite3
+UVICORN_HOST=${LISTEN}
+UVICORN_PORT=${PORT}
 
 # --- free configs add-on -------------------------------------------------
 # Community proxy lists are harvested, TCP health-checked, and appended to the
 # subscription output of eligible users. See FREE_CONFIGS.md in the repo.
-FREE_CONFIGS_ENABLED = ${FREE_CONFIGS}
+FREE_CONFIGS_ENABLED=${FREE_CONFIGS}
 # "all" = every user, "groups" = only members of opted-in groups
-FREE_CONFIGS_MODE = "all"
-FREE_CONFIGS_REFRESH_INTERVAL = 86400
+FREE_CONFIGS_MODE=all
+FREE_CONFIGS_REFRESH_INTERVAL=86400
 # 0 = no cap. Raise gradually and watch memory on a small VPS.
-FREE_CONFIGS_MAX_CONFIGS = 2000
-FREE_CONFIGS_TCP_TIMEOUT = 3
-FREE_CONFIGS_MAX_CONCURRENCY = 50
+FREE_CONFIGS_MAX_CONFIGS=2000
+FREE_CONFIGS_TCP_TIMEOUT=3
+FREE_CONFIGS_MAX_CONCURRENCY=50
 EOF
     chmod 600 "${INSTALL_DIR}/.env"
 }

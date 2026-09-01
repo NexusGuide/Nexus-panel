@@ -31,7 +31,13 @@ from app.free_configs.schemas import (
     FreeConfigSourceResponse,
     ManualConfigCreate,
 )
-from app.free_configs.schemas import GroupAccessResponse, GroupAccessUpdate
+from app.free_configs.schemas import (
+    GroupAccessResponse,
+    GroupAccessUpdate,
+    GroupAssignmentPatch,
+    GroupAssignmentUpdate,
+    GroupSummary,
+)
 from app.models.admin import AdminDetails
 from app.utils import responses
 from config import free_configs_settings as env_settings
@@ -370,6 +376,68 @@ async def trigger_refresh(_: AdminDetails = Depends(require_owner)):
 # --------------------------------------------------------------------------- #
 # group access
 # --------------------------------------------------------------------------- #
+
+
+@router.get("/groups/summary", response_model=list[GroupSummary])
+async def list_group_summaries(db: AsyncSession = Depends(get_db), _: AdminDetails = Depends(require_owner)):
+    """Every panel group, whether it receives free configs, and how many it has."""
+    opted_in = set(await crud.get_enabled_group_ids(db))
+    counts = await crud.get_assignment_counts(db)
+    return [
+        GroupSummary(
+            id=group_id,
+            name=name,
+            receives_free_configs=group_id in opted_in,
+            assigned_count=counts.get(group_id, 0),
+            # an opted-in group with no explicit list gets everything, which is
+            # what "opted in" meant before assignment existed
+            gets_whole_pool=group_id in opted_in and counts.get(group_id, 0) == 0,
+        )
+        for group_id, name in await crud.list_groups(db)
+    ]
+
+
+@router.get("/groups/{group_id}/configs", response_model=list[str])
+async def get_group_configs(
+    group_id: int, db: AsyncSession = Depends(get_db), _: AdminDetails = Depends(require_owner)
+):
+    """The config hashes assigned to this group. Empty means it gets the whole pool."""
+    return await crud.get_group_assignments(db, group_id)
+
+
+@router.put("/groups/{group_id}/configs", response_model=dict)
+async def set_group_configs(
+    group_id: int,
+    payload: GroupAssignmentUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: AdminDetails = Depends(require_owner),
+):
+    """Replace this group's config list, the way a group's inbounds are set.
+
+    An empty list restores "this group gets the whole pool".
+    """
+    count = await crud.set_group_assignments(db, group_id, payload.uri_hashes)
+    await service.invalidate_access_cache()
+    await service.invalidate_pool_cache()
+    return {"group_id": group_id, "assigned": count, "gets_whole_pool": count == 0}
+
+
+@router.post("/groups/{group_id}/configs", response_model=dict)
+async def patch_group_configs(
+    group_id: int,
+    payload: GroupAssignmentPatch,
+    db: AsyncSession = Depends(get_db),
+    _: AdminDetails = Depends(require_owner),
+):
+    """Add or remove configs for one group without replacing its whole list."""
+    if payload.action == "add":
+        changed = await crud.add_group_assignments(db, group_id, payload.uri_hashes)
+    else:
+        changed = await crud.remove_group_assignments(db, group_id, payload.uri_hashes)
+    await service.invalidate_access_cache()
+    await service.invalidate_pool_cache()
+    remaining = len(await crud.get_group_assignments(db, group_id))
+    return {"group_id": group_id, "changed": changed, "assigned": remaining, "gets_whole_pool": remaining == 0}
 
 
 @router.get("/groups", response_model=GroupAccessResponse)

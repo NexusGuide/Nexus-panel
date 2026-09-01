@@ -220,6 +220,13 @@ curl https://panel.example.com/api/free-configs/status -H "Authorization: Bearer
   fingerprint, ALPN - every parameter the config carries, with the resulting URI
   shown live as you type. Parameters can be added or removed, including keys the
   panel has never heard of.
+- **Groups** - the same idea as a group's inbounds. Tick which groups receive
+  free configs at all, then give a group specific configs and its members get
+  exactly those. A group that receives free configs but has none picked gets the
+  whole pool, which is what an opted-in group meant before this existed - so
+  upgrading changes nothing for anyone already using `FREE_CONFIGS_MODE=groups`.
+  A user in several groups gets the union, and any one of their groups being on
+  "the whole pool" means they get the whole pool.
 - **Sources** - add, rename, enable, disable and delete the lists that get
   harvested, with each one's last fetch count and error.
 - **Settings** - everything below, editable without a restart, plus a switch
@@ -277,6 +284,10 @@ fork adds no new RBAC resource, which keeps the diff against upstream small.)
 | `POST` | `/api/free-configs/refresh` | trigger a refresh (async, `202`) |
 | `GET` | `/api/free-configs/groups` | read group opt-in list |
 | `PUT` | `/api/free-configs/groups` | replace group opt-in list |
+| `GET` | `/api/free-configs/groups/summary` | every group, what it receives, how many |
+| `GET` | `/api/free-configs/groups/{id}/configs` | one group's assigned configs |
+| `PUT` | `/api/free-configs/groups/{id}/configs` | replace them (empty = whole pool) |
+| `POST` | `/api/free-configs/groups/{id}/configs` | add or remove some of them |
 
 ---
 

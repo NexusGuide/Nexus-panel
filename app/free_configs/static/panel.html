@@ -90,6 +90,7 @@
 
 <div class="tabs" role="tablist">
   <button role="tab" aria-selected="true" data-tab="pool">Pool</button>
+  <button role="tab" aria-selected="false" data-tab="groups">Groups</button>
   <button role="tab" aria-selected="false" data-tab="sources">Sources</button>
   <button role="tab" aria-selected="false" data-tab="settings">Settings</button>
 </div>
@@ -119,6 +120,10 @@
     <span class="muted" id="selcount">0 selected</span>
     <button id="bulkOn" disabled>Enable selected</button>
     <button id="bulkOff" disabled>Disable selected</button>
+    <span class="muted" style="margin-inline-start:8px">Group:</span>
+    <select id="bulkGroup" style="min-width:150px"></select>
+    <button id="bulkAssign" disabled>Add to group</button>
+    <button id="bulkUnassign" disabled>Remove from group</button>
   </div>
 
   <div class="wrap">
@@ -135,6 +140,37 @@
     <button id="prev">Previous</button>
     <span class="muted" id="pageinfo"></span>
     <button id="next">Next</button>
+  </div>
+</section>
+
+<section id="tab-groups" hidden>
+  <p class="hint" style="margin-bottom:10px">
+    A group works like it does for inbounds: give it specific configs and its members get
+    exactly those. A group that receives free configs but has none picked gets the whole
+    pool &mdash; which is what it did before this existed.
+  </p>
+  <div class="wrap">
+    <table>
+      <thead><tr><th>Receives free configs</th><th>Group</th><th>Gets</th><th></th></tr></thead>
+      <tbody id="groupRows"></tbody>
+    </table>
+  </div>
+
+  <div id="groupEditor" hidden>
+    <div class="section">Configs for <span id="geName"></span></div>
+    <div class="row" style="margin-bottom:8px">
+      <input class="grow" id="geSearch" type="search" placeholder="Search this group's choices...">
+      <span class="muted" id="geCount"></span>
+      <button id="geClear">Give it the whole pool</button>
+      <button id="geSave" class="primary">Save</button>
+      <button id="geClose">Close</button>
+    </div>
+    <div class="wrap" style="max-height:360px; overflow-y:auto">
+      <table>
+        <thead><tr><th style="width:28px"></th><th>Protocol</th><th>Address</th><th>SNI / Host</th><th>Name</th></tr></thead>
+        <tbody id="geRows"></tbody>
+      </table>
+    </div>
   </div>
 </section>
 
@@ -203,7 +239,7 @@
   'use strict';
 
   const API = '/api/free-configs';
-  const state = { offset: 0, limit: 50, total: 0, selected: new Set(), protocols: [], settings: null };
+  const state = { offset: 0, limit: 50, total: 0, selected: new Set(), protocols: [], settings: null, groups: [] };
 
   // The dashboard keeps its token in localStorage on this same origin, so an
   // embedded page can authenticate as the admin already signed in. Nothing is
@@ -345,10 +381,24 @@
     document.getElementById('next').disabled = to >= page.total;
   }
 
+  function clearSelection() {
+    // The checkboxes are the truth the user sees, so they have to be cleared
+    // with the set - leaving them ticked while the set is empty makes the next
+    // click a no-op and the bulk buttons stay dead for no visible reason.
+    state.selected.clear();
+    document.querySelectorAll('#rows .sel').forEach(box => { box.checked = false; });
+    const all = document.getElementById('selall');
+    if (all) all.checked = false;
+    updateSelectionUI();
+  }
+
   function updateSelectionUI() {
     document.getElementById('selcount').textContent = state.selected.size + ' selected';
-    document.getElementById('bulkOn').disabled = state.selected.size === 0;
-    document.getElementById('bulkOff').disabled = state.selected.size === 0;
+    const none = state.selected.size === 0;
+    document.getElementById('bulkOn').disabled = none;
+    document.getElementById('bulkOff').disabled = none;
+    document.getElementById('bulkAssign').disabled = none;
+    document.getElementById('bulkUnassign').disabled = none;
   }
 
   document.getElementById('rows').addEventListener('change', async e => {
@@ -405,9 +455,7 @@
         body: JSON.stringify({ uri_hashes: [...state.selected], is_enabled: isEnabled }),
       });
       toast(`${state.selected.size} config(s) ${isEnabled ? 'enabled' : 'disabled'}`);
-      state.selected.clear();
-      document.getElementById('selall').checked = false;
-      updateSelectionUI();
+      clearSelection();
       await loadPool(); loadStatus();
     } catch (err) { toast(err.message); }
   }
@@ -588,6 +636,131 @@
     } catch (err) { toast(err.message); }
   };
 
+  // ---------------------------------------------------------------- groups
+
+  let groupEditing = null;   // { id, name, chosen:Set, items:[] }
+
+  async function loadGroups() {
+    const groups = await api('/groups/summary');
+    state.groups = groups;
+
+    const select = document.getElementById('bulkGroup');
+    const current = select.value;
+    select.innerHTML = groups.length
+      ? groups.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join('')
+      : '<option value="">no groups yet</option>';
+    select.value = current || (groups[0] ? String(groups[0].id) : '');
+
+    const body = document.getElementById('groupRows');
+    if (!groups.length) {
+      body.innerHTML = `<tr><td colspan="4" class="empty">No groups in the panel yet.</td></tr>`;
+      return;
+    }
+    body.innerHTML = groups.map(g => `
+      <tr>
+        <td><input type="checkbox" class="gaccess" data-id="${g.id}" ${g.receives_free_configs ? 'checked' : ''}></td>
+        <td>${esc(g.name)}</td>
+        <td>${!g.receives_free_configs
+              ? '<span class="muted">nothing</span>'
+              : g.gets_whole_pool
+                ? '<span class="pill">the whole pool</span>'
+                : `<span class="pill ok">${g.assigned_count} chosen</span>`}</td>
+        <td class="actions"><button class="gpick" data-id="${g.id}" data-name="${esc(g.name)}">Choose configs</button></td>
+      </tr>`).join('');
+  }
+
+  document.getElementById('groupRows').addEventListener('change', async e => {
+    if (!e.target.classList.contains('gaccess')) return;
+    // the opt-in list is replaced wholesale, so send every ticked group
+    const ids = [...document.querySelectorAll('#groupRows .gaccess')]
+      .filter(box => box.checked).map(box => Number(box.dataset.id));
+    try {
+      await api('/groups', { method: 'PUT', body: JSON.stringify({ group_ids: ids }) });
+      toast('Saved');
+      loadGroups();
+    } catch (err) { toast(err.message); loadGroups(); }
+  });
+
+  document.getElementById('groupRows').addEventListener('click', async e => {
+    if (!e.target.classList.contains('gpick')) return;
+    const id = Number(e.target.dataset.id);
+    try {
+      const [chosen, page] = await Promise.all([
+        api('/groups/' + id + '/configs'),
+        api('/configs?limit=500&status=enabled'),
+      ]);
+      groupEditing = { id, name: e.target.dataset.name, chosen: new Set(chosen), items: page.items };
+      document.getElementById('geName').textContent = groupEditing.name;
+      document.getElementById('groupEditor').hidden = false;
+      renderGroupChoices();
+      document.getElementById('geSearch').value = '';
+    } catch (err) { toast(err.message); }
+  });
+
+  function renderGroupChoices() {
+    const needle = document.getElementById('geSearch').value.trim().toLowerCase();
+    const items = groupEditing.items.filter(c =>
+      !needle || c.address.toLowerCase().includes(needle) || (c.remark || '').toLowerCase().includes(needle)
+      || sniOf(c.uri).toLowerCase().includes(needle));
+    document.getElementById('geRows').innerHTML = items.length ? items.map(c => `
+      <tr>
+        <td><input type="checkbox" class="gc" data-hash="${esc(c.uri_hash)}" ${groupEditing.chosen.has(c.uri_hash) ? 'checked' : ''}></td>
+        <td>${esc(c.protocol)}</td>
+        <td>${esc(c.address)}</td>
+        <td>${sniOf(c.uri) ? esc(sniOf(c.uri)) : '<span class="muted">-</span>'}</td>
+        <td>${esc(c.remark || '')}</td>
+      </tr>`).join('') : `<tr><td colspan="5" class="empty">Nothing matches.</td></tr>`;
+    document.getElementById('geCount').textContent = groupEditing.chosen.size
+      ? `${groupEditing.chosen.size} chosen` : 'none chosen - this group gets the whole pool';
+  }
+
+  document.getElementById('geRows').addEventListener('change', e => {
+    if (!e.target.classList.contains('gc')) return;
+    e.target.checked ? groupEditing.chosen.add(e.target.dataset.hash)
+                     : groupEditing.chosen.delete(e.target.dataset.hash);
+    document.getElementById('geCount').textContent = groupEditing.chosen.size
+      ? `${groupEditing.chosen.size} chosen` : 'none chosen - this group gets the whole pool';
+  });
+
+  document.getElementById('geSearch').addEventListener('input', () => renderGroupChoices());
+  document.getElementById('geClose').onclick = () => {
+    document.getElementById('groupEditor').hidden = true;
+    groupEditing = null;
+  };
+  document.getElementById('geClear').onclick = () => {
+    groupEditing.chosen.clear();
+    renderGroupChoices();
+  };
+  document.getElementById('geSave').onclick = async () => {
+    try {
+      await api('/groups/' + groupEditing.id + '/configs', {
+        method: 'PUT', body: JSON.stringify({ uri_hashes: [...groupEditing.chosen] }),
+      });
+      toast(groupEditing.chosen.size ? 'Saved' : 'This group now gets the whole pool');
+      document.getElementById('groupEditor').hidden = true;
+      groupEditing = null;
+      loadGroups();
+    } catch (err) { toast(err.message); }
+  };
+
+  async function bulkGroup(action) {
+    const groupId = document.getElementById('bulkGroup').value;
+    if (!groupId) { toast('No group selected'); return; }
+    try {
+      const result = await api('/groups/' + groupId + '/configs', {
+        method: 'POST',
+        body: JSON.stringify({ uri_hashes: [...state.selected], action }),
+      });
+      toast(action === 'add'
+        ? `${result.changed} added to the group`
+        : `${result.changed} removed` + (result.gets_whole_pool ? ' - it now gets the whole pool' : ''));
+      clearSelection();
+      loadGroups();
+    } catch (err) { toast(err.message); }
+  }
+  document.getElementById('bulkAssign').onclick = () => bulkGroup('add');
+  document.getElementById('bulkUnassign').onclick = () => bulkGroup('remove');
+
   // ---------------------------------------------------------------- editor
 
   let editing = null;   // { uri_hash, protocol, suggested }
@@ -727,9 +900,10 @@
   document.querySelectorAll('.tabs button').forEach(button => {
     button.onclick = () => {
       document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b === button)));
-      for (const name of ['pool', 'sources', 'settings']) {
+      for (const name of ['pool', 'groups', 'sources', 'settings']) {
         document.getElementById('tab-' + name).hidden = name !== button.dataset.tab;
       }
+      if (button.dataset.tab === 'groups') loadGroups().catch(e => toast(e.message));
       if (button.dataset.tab === 'sources') loadSources().catch(e => toast(e.message));
       if (button.dataset.tab === 'settings') loadSettings().catch(e => toast(e.message));
     };
@@ -746,6 +920,7 @@
       await loadSettings();
       await loadStatus();
       await loadPool();
+      await loadGroups();
     } catch (err) {
       document.getElementById('rows').innerHTML =
         `<tr><td colspan="11" class="empty">${esc(err.message)}</td></tr>`;

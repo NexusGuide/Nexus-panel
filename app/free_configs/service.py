@@ -117,7 +117,8 @@ async def refresh_pool() -> dict:
                     await crud.record_fetch_outcome(db, source_id, count, error, commit=False)
                 await db.commit()
 
-            # the pool changed - drop the cached read path
+            # the pool changed - drop the cached read paths
+            _clear_group_cache()
             await _clear_pool_cache()
 
             duration = (dt.now(UTC) - started).total_seconds()
@@ -160,7 +161,8 @@ async def _cached_pool() -> list[str]:
 
 
 async def invalidate_pool_cache() -> None:
-    """Public entry point for the API: an override or setting just changed."""
+    """Public entry point for the API: an override, assignment or setting changed."""
+    _clear_group_cache()
     await _clear_pool_cache()
 
 
@@ -180,6 +182,7 @@ async def _cached_group_mode_enabled() -> bool:
 
 async def invalidate_access_cache() -> None:
     """Drop the cached group-opt-in lookup after the access list changes."""
+    _clear_group_cache()
     try:
         await _cached_group_mode_enabled.cache.clear()
     except Exception as exc:  # noqa: BLE001
@@ -199,8 +202,58 @@ async def user_is_eligible(user_id: int) -> bool:
         return await crud.user_has_access(db, user_id)
 
 
+# Per-group results, cached briefly and keyed by the user's set of groups.
+# The whole-pool case keeps its own cache above; this one only exists because in
+# group mode two users with different groups get different lists, so a single
+# cached list would serve one of them the other's configs.
+_group_cache: dict[tuple[int, ...], tuple[float, list[str]]] = {}
+_GROUP_CACHE_TTL = 60
+
+
+def _clear_group_cache() -> None:
+    _group_cache.clear()
+
+
+async def _configs_for_groups(group_ids: list[int]) -> list[str]:
+    key = tuple(sorted(group_ids))
+    now = asyncio.get_running_loop().time()
+    cached = _group_cache.get(key)
+    if cached and now - cached[0] < _GROUP_CACHE_TTL:
+        return cached[1]
+
+    settings = await get_settings()
+    async with GetDB() as db:
+        pairs = await crud.get_configs_for_groups(db, list(key), limit=settings.max_per_subscription)
+    prefix = settings.remark_prefix
+    uris = [label_uri(uri, prefix, remark_override=remark) for uri, remark in pairs]
+
+    # keep the cache from growing without bound on a panel with many group
+    # combinations - it is a short-lived optimisation, not a store
+    if len(_group_cache) > 512:
+        _group_cache.clear()
+    _group_cache[key] = (now, uris)
+    return uris
+
+
 async def get_configs_for_user(user_id: int) -> list[str]:
     """Return the free config URIs this user should get (empty when not eligible)."""
-    if not await user_is_eligible(user_id):
+    settings = await get_settings()
+    if not settings.enabled:
         return []
-    return await _cached_pool()
+
+    if settings.mode == "all":
+        return await _cached_pool()
+
+    if not await _cached_group_mode_enabled():
+        return []
+
+    async with GetDB() as db:
+        group_ids = await crud.get_user_group_ids(db, user_id)
+        if not group_ids:
+            return []
+        allowed = set(await crud.get_enabled_group_ids(db))
+
+    eligible = [group_id for group_id in group_ids if group_id in allowed]
+    if not eligible:
+        return []
+    return await _configs_for_groups(eligible)

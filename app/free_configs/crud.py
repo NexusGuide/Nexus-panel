@@ -7,7 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Group, users_groups_association
 from app.free_configs.fetcher import HealthResult
-from app.free_configs.models import FreeConfig, FreeConfigGroupAccess, FreeConfigOverride, FreeConfigSource
+from app.free_configs.models import (
+    FreeConfig,
+    FreeConfigGroupAccess,
+    FreeConfigGroupConfig,
+    FreeConfigOverride,
+    FreeConfigSource,
+)
 from app.free_configs.settings import get_settings
 
 # --------------------------------------------------------------------------- #
@@ -443,3 +449,105 @@ async def user_has_access(db: AsyncSession, user_id: int) -> bool:
         )
     )
     return bool((await db.execute(stmt)).scalar())
+
+
+# --------------------------------------------------------------------------- #
+# per-group config assignment (the equivalent of a group's inbounds)
+# --------------------------------------------------------------------------- #
+
+
+async def get_user_group_ids(db: AsyncSession, user_id: int) -> list[int]:
+    stmt = select(users_groups_association.c.groups_id).where(users_groups_association.c.user_id == user_id)
+    return list((await db.execute(stmt)).scalars().all())
+
+
+async def get_group_assignments(db: AsyncSession, group_id: int) -> list[str]:
+    stmt = select(FreeConfigGroupConfig.uri_hash).where(FreeConfigGroupConfig.group_id == group_id)
+    return list((await db.execute(stmt)).scalars().all())
+
+
+async def get_assignment_counts(db: AsyncSession) -> dict[int, int]:
+    """How many configs each group has been given, for the panel's group list."""
+    stmt = select(FreeConfigGroupConfig.group_id, func.count()).group_by(FreeConfigGroupConfig.group_id)
+    return {group_id: count for group_id, count in (await db.execute(stmt)).all()}
+
+
+async def set_group_assignments(db: AsyncSession, group_id: int, uri_hashes: list[str]) -> int:
+    """Replace one group's config list. An empty list means "the whole pool"."""
+    await db.execute(delete(FreeConfigGroupConfig).where(FreeConfigGroupConfig.group_id == group_id))
+    wanted = [h for h in dict.fromkeys(uri_hashes) if h]
+    if wanted:
+        db.add_all([FreeConfigGroupConfig(group_id=group_id, uri_hash=h) for h in wanted])
+    await db.commit()
+    return len(wanted)
+
+
+async def add_group_assignments(db: AsyncSession, group_id: int, uri_hashes: list[str]) -> int:
+    """Add configs to a group without disturbing what it already has."""
+    wanted = {h for h in uri_hashes if h}
+    if not wanted:
+        return 0
+    existing = set(await get_group_assignments(db, group_id))
+    new = wanted - existing
+    if new:
+        db.add_all([FreeConfigGroupConfig(group_id=group_id, uri_hash=h) for h in new])
+        await db.commit()
+    return len(new)
+
+
+async def remove_group_assignments(db: AsyncSession, group_id: int, uri_hashes: list[str]) -> int:
+    wanted = [h for h in dict.fromkeys(uri_hashes) if h]
+    if not wanted:
+        return 0
+    result = await db.execute(
+        delete(FreeConfigGroupConfig)
+        .where(FreeConfigGroupConfig.group_id == group_id)
+        .where(FreeConfigGroupConfig.uri_hash.in_(wanted))
+    )
+    await db.commit()
+    return result.rowcount or 0
+
+
+async def get_configs_for_groups(db: AsyncSession, group_ids: list[int], limit: int = 0) -> list[tuple[str, str | None]]:
+    """The configs these groups are entitled to, fastest first.
+
+    A group with no assignments is entitled to the whole pool - that is what an
+    opted-in group meant before assignment existed, and it stays the meaning so
+    upgrading changes nothing for anyone already using group mode.
+    """
+    if not group_ids:
+        return []
+
+    assigned_stmt = select(FreeConfigGroupConfig.group_id).where(FreeConfigGroupConfig.group_id.in_(group_ids)).distinct()
+    groups_with_assignments = set((await db.execute(assigned_stmt)).scalars().all())
+    if set(group_ids) - groups_with_assignments:
+        # at least one of the user's groups is "everything"
+        return await get_healthy_configs(db, limit=limit)
+
+    hash_stmt = select(FreeConfigGroupConfig.uri_hash).where(FreeConfigGroupConfig.group_id.in_(group_ids)).distinct()
+    hashes = list((await db.execute(hash_stmt)).scalars().all())
+    if not hashes:
+        return []
+
+    stmt = (
+        select(FreeConfig.uri, FreeConfigOverride.remark)
+        .outerjoin(FreeConfigOverride, FreeConfigOverride.uri_hash == FreeConfig.uri_hash)
+        .where(FreeConfig.uri_hash.in_(hashes))
+        .where(FreeConfig.is_enabled.is_(True))
+        .where(or_(FreeConfig.is_healthy.is_(True), FreeConfig.is_manual.is_(True)))
+        .order_by(
+            FreeConfig.is_manual.desc(),
+            FreeConfig.latency_ms.is_(None),
+            FreeConfig.latency_ms.asc(),
+            FreeConfig.id.asc(),
+        )
+    )
+    if limit > 0:
+        stmt = stmt.limit(limit)
+    return [(uri, remark) for uri, remark in (await db.execute(stmt)).all()]
+
+
+async def list_groups(db: AsyncSession) -> list[tuple[int, str]]:
+    """Every group in the panel, for the assignment UI."""
+    stmt = select(Group.id, Group.name).order_by(Group.name)
+    return [(group_id, name) for group_id, name in (await db.execute(stmt)).all()]

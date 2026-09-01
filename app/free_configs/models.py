@@ -130,7 +130,9 @@ class FreeConfigSetting(Base, IdMixin):
 class FreeConfigGroupAccess(Base):
     """Opt-in list of groups whose members receive free configs.
 
-    Only consulted when ``FREE_CONFIGS_MODE=groups``.
+    Only consulted when ``FREE_CONFIGS_MODE=groups``. A group listed here but
+    with no rows in ``free_config_group_configs`` receives the whole pool; one
+    with rows receives exactly those configs.
     """
 
     __tablename__ = "free_config_group_access"
@@ -140,3 +142,25 @@ class FreeConfigGroupAccess(Base):
         ForeignKey("groups.id", ondelete="CASCADE"),
         primary_key=True,
     )
+
+
+class FreeConfigGroupConfig(Base):
+    """Which free configs belong to which group - the equivalent of a group's inbounds.
+
+    Keyed by the config's content hash, not its row id, for the same reason the
+    overrides table is: the pool is emptied and rebuilt on every refresh, so an
+    assignment stored against a row would be gone within a day. A hash that
+    stops appearing upstream simply stops matching, and starts working again if
+    the config comes back.
+    """
+
+    __tablename__ = "free_config_group_configs"
+
+    group_id: Mapped[int] = mapped_column(
+        SqliteCompatibleBigInteger,
+        ForeignKey("groups.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    uri_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+
+    __table_args__ = (Index("ix_free_config_group_configs_hash", "uri_hash"),)

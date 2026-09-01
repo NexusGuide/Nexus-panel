@@ -197,3 +197,26 @@ class ConfigFieldsUpdate(BaseModel):
     address: str = Field(max_length=256)
     port: int = Field(ge=1, le=65535)
     params: dict[str, str] = Field(default_factory=dict)
+
+
+class GroupSummary(BaseModel):
+    """A panel group and what it has been given."""
+
+    id: int
+    name: str
+    receives_free_configs: bool = False
+    assigned_count: int = 0
+    gets_whole_pool: bool = False
+
+
+class GroupAssignmentUpdate(BaseModel):
+    """Replace one group's config list. An empty list means the whole pool."""
+
+    uri_hashes: list[str] = Field(default_factory=list, max_length=5000)
+
+
+class GroupAssignmentPatch(BaseModel):
+    """Add or remove configs without replacing the group's whole list."""
+
+    uri_hashes: list[str] = Field(default_factory=list, max_length=5000)
+    action: str = Field(default="add", pattern="^(add|remove)$")

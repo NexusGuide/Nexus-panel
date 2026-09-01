@@ -357,6 +357,21 @@ async def clear_override(db: AsyncSession, uri_hash: str) -> bool:
     return True
 
 
+async def replace_with_edited(db: AsyncSession, old_hash: str, config, remark: str | None = None) -> FreeConfig:
+    """Swap a config for an edited version of itself.
+
+    Editing an address, SNI or UUID produces a different proxy, with a different
+    content hash - it is not the harvested one any more. So the edited version is
+    stored as a manual entry (kept across refreshes, never capped out) and the
+    original is switched off rather than deleted: the next refresh will harvest
+    it again from its source, and the override makes sure it stays off instead of
+    quietly reappearing beside its own replacement.
+    """
+    if config.uri_hash != old_hash:
+        await set_override(db, old_hash, is_enabled=False, note="replaced by an edited copy")
+    return await upsert_manual_config(db, config, remark=remark)
+
+
 async def upsert_manual_config(db: AsyncSession, config, remark: str | None = None) -> FreeConfig:
     """Add a hand-entered config to both the override table and the pool.
 

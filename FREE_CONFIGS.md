@@ -215,7 +215,11 @@ curl https://panel.example.com/api/free-configs/status -H "Authorization: Bearer
 
 - **Pool** - every config, fastest first. Search by address or URI, filter by
   protocol or state, switch entries on and off individually or in bulk, rename
-  them, and paste in configs by hand.
+  them, and paste in configs by hand. Click a row to open the **editor**:
+  address, port, UUID or password, transport, host, path, TLS, SNI,
+  fingerprint, ALPN - every parameter the config carries, with the resulting URI
+  shown live as you type. Parameters can be added or removed, including keys the
+  panel has never heard of.
 - **Sources** - add, rename, enable, disable and delete the lists that get
   harvested, with each one's last fetch count and error.
 - **Settings** - everything below, editable without a restart, plus a switch
@@ -237,6 +241,17 @@ Configs added by hand are kept across refreshes, are never dropped by the
 per-server cap, and are served even if the health check cannot reach them - you
 added them deliberately, and the pool does not second-guess that.
 
+**Editing follows from that.** Change an address, credential or SNI and it is no
+longer the config the source published, so it is saved as a hand-added entry and
+the original is switched off rather than deleted - the next refresh harvests the
+original again, and the override keeps it off instead of letting it reappear
+beside its own replacement. Editing only the name leaves the config where it is.
+
+Nothing is dropped in the process: a URI is split into the parts that are
+structural (scheme, credentials, address, port, name) and a plain dictionary of
+everything else, then rebuilt from the same. A parameter the panel does not
+recognise still shows as an editable row and survives the round trip.
+
 ## API
 
 All endpoints are **owner-only** — injecting third-party servers into user subscriptions
@@ -252,6 +267,8 @@ fork adds no new RBAC resource, which keeps the diff against upstream small.)
 | `GET` | `/api/free-configs/status` | settings, last refresh, pool size |
 | `GET` | `/api/free-configs/configs` | page through the pool (search, filter) |
 | `PUT` | `/api/free-configs/configs/{hash}` | enable/disable, rename, annotate |
+| `GET` | `/api/free-configs/configs/{hash}/fields` | the config broken into editable fields |
+| `PUT` | `/api/free-configs/configs/{hash}/fields` | save an edited config |
 | `POST` | `/api/free-configs/configs/bulk` | enable/disable many at once |
 | `POST` | `/api/free-configs/configs/manual` | add a config by hand |
 | `DELETE` | `/api/free-configs/configs/{hash}` | forget an override |

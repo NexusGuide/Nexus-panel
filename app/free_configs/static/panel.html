@@ -64,6 +64,21 @@
   #toast { position: fixed; inset-block-end: 16px; inset-inline-end: 16px; background: var(--fg); color: var(--bg); padding: 9px 14px; border-radius: 8px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 20; }
   #toast.show { opacity: 1; }
   .empty { padding: 28px; text-align: center; color: var(--muted); }
+  #overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; z-index: 30; }
+  #overlay.show { display: grid; place-items: center; padding: 16px; }
+  #editor { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; width: min(760px, 100%); max-height: 90vh; overflow: auto; }
+  #editor header { position: sticky; top: 0; background: var(--bg); border-bottom: 1px solid var(--line); padding: 12px 16px; display: flex; align-items: center; gap: 10px; }
+  #editor header h3 { margin: 0; font-size: 15px; flex: 1; }
+  #editor .body { padding: 14px 16px; }
+  #editor footer { position: sticky; bottom: 0; background: var(--bg); border-top: 1px solid var(--line); padding: 12px 16px; display: flex; gap: 8px; align-items: center; }
+  .frow { display: grid; grid-template-columns: 190px 1fr auto; gap: 10px; align-items: center; padding: 5px 0; }
+  .frow > label { color: var(--muted); font-size: 13px; }
+  .frow input, .frow select { width: 100%; }
+  .frow .drop { border: 0; background: none; color: var(--muted); padding: 4px 8px; }
+  .frow .drop:hover { color: var(--bad); background: none; }
+  .section { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  #uriPreview { width: 100%; min-height: 74px; font-family: ui-monospace, monospace; font-size: 12px; resize: vertical; }
+  tr.clickable td:not(.actions):not(.namecell) { cursor: pointer; }
 </style>
 </head>
 <body>
@@ -151,6 +166,35 @@
     opted in cannot be enabled from a web form.
   </p>
 </section>
+
+<div id="overlay">
+  <div id="editor" role="dialog" aria-modal="true" aria-labelledby="edTitle">
+    <header>
+      <h3 id="edTitle">Edit config</h3>
+      <span class="pill" id="edProto"></span>
+      <button id="edClose">Close</button>
+    </header>
+    <div class="body">
+      <div class="frow"><label for="edAlias">Alias (remarks)</label><input id="edAlias"><span></span></div>
+      <div class="frow"><label for="edAddress">Address</label><input id="edAddress"><span></span></div>
+      <div class="frow"><label for="edPort">Port</label><input id="edPort" type="number" min="1" max="65535"><span></span></div>
+      <div id="edFields"></div>
+      <div class="section">Add a parameter</div>
+      <div class="row">
+        <select id="edAdd" class="grow"></select>
+        <input id="edAddCustom" placeholder="or type a key of your own" style="width:210px">
+        <button id="edAddBtn">Add</button>
+      </div>
+      <div class="section">Resulting URI</div>
+      <textarea id="uriPreview" readonly></textarea>
+    </div>
+    <footer>
+      <button id="edSave" class="primary">Save</button>
+      <button id="edCancel">Cancel</button>
+      <span class="hint" id="edHint" style="margin-inline-start:auto"></span>
+    </footer>
+  </div>
+</div>
 
 <div id="toast"></div>
 
@@ -250,7 +294,7 @@
       return;
     }
     rows.innerHTML = items.map(c => `
-      <tr class="${c.is_enabled ? '' : 'off'}">
+      <tr class="clickable ${c.is_enabled ? '' : 'off'}" data-row="${esc(c.uri_hash)}">
         <td><input type="checkbox" class="sel" data-hash="${esc(c.uri_hash)}" ${state.selected.has(c.uri_hash) ? 'checked' : ''}></td>
         <td><input type="checkbox" class="tog" data-hash="${esc(c.uri_hash)}" ${c.is_enabled ? 'checked' : ''}></td>
         <td>${esc(c.protocol)}</td>
@@ -262,9 +306,12 @@
           ${c.is_manual ? '<span class="pill man">manual</span> ' : ''}
           ${c.is_healthy ? '<span class="pill ok">reachable</span>' : '<span class="pill bad">no answer</span>'}
         </td>
-        <td><input class="rename" data-hash="${esc(c.uri_hash)}" value="${esc(c.remark || '')}" placeholder="-" style="width:130px"></td>
+        <td class="namecell"><input class="rename" data-hash="${esc(c.uri_hash)}" value="${esc(c.remark || '')}" placeholder="-" style="width:130px"></td>
         <td class="uri" title="${esc(c.uri)}">${esc(c.uri)}</td>
-        <td class="actions"><button class="del" data-hash="${esc(c.uri_hash)}" title="Forget this override">Reset</button></td>
+        <td class="actions">
+          <button class="edit" data-hash="${esc(c.uri_hash)}">Edit</button>
+          <button class="del" data-hash="${esc(c.uri_hash)}" title="Forget this override">Reset</button>
+        </td>
       </tr>`).join('');
   }
 
@@ -324,6 +371,17 @@
   });
 
   document.getElementById('rows').addEventListener('click', async e => {
+    if (e.target.classList.contains('edit')) {
+      openEditor(e.target.dataset.hash);
+      return;
+    }
+    // clicking anywhere on the row opens it too, except the controls
+    const row = e.target.closest('tr.clickable');
+    if (row && !e.target.closest('td.actions') && !e.target.closest('td.namecell')
+        && e.target.tagName !== 'INPUT') {
+      openEditor(row.dataset.row);
+      return;
+    }
     if (!e.target.classList.contains('del')) return;
     try {
       await api('/configs/' + e.target.dataset.hash, { method: 'DELETE' });
@@ -528,6 +586,140 @@
       toast('Back to .env defaults');
       await loadSettings(); loadStatus();
     } catch (err) { toast(err.message); }
+  };
+
+  // ---------------------------------------------------------------- editor
+
+  let editing = null;   // { uri_hash, protocol, suggested }
+
+  function editorValues() {
+    const params = {};
+    document.querySelectorAll('#edFields [data-param]').forEach(el => {
+      params[el.dataset.param] = el.value;
+    });
+    return {
+      alias: document.getElementById('edAlias').value,
+      address: document.getElementById('edAddress').value.trim(),
+      port: Number(document.getElementById('edPort').value),
+      params,
+    };
+  }
+
+  function paramRow(field) {
+    const control = field.options
+      // a value the panel does not know about must still be selectable
+      ? `<select data-param="${esc(field.key)}">` +
+        [...new Set([...(field.options || []), field.value || ''])]
+          .map(o => `<option value="${esc(o)}" ${o === (field.value || '') ? 'selected' : ''}>${o === '' ? '(unset)' : esc(o)}</option>`).join('') +
+        '</select>'
+      : `<input data-param="${esc(field.key)}" value="${esc(field.value || '')}">`;
+    return `<div class="frow" data-key="${esc(field.key)}">
+        <label title="${esc(field.key)}">${esc(field.label)}</label>
+        ${control}
+        <button class="drop" title="Remove this parameter">&times;</button>
+      </div>`;
+  }
+
+  function refreshPreview() {
+    // Built the same way the backend builds it, so what you see is what is saved.
+    const v = editorValues();
+    const q = Object.entries(v.params).filter(([, val]) => val !== '')
+      .map(([k, val]) => `${encodeURIComponent(k)}=${encodeURIComponent(val)}`).join('&');
+    let uri;
+    if (editing.protocol === 'vmess') {
+      uri = 'vmess://' + btoa(JSON.stringify({ v: '2', ps: v.alias, add: v.address, port: String(v.port), ...v.params }));
+    } else {
+      const key = editing.protocol === 'vless' ? 'id' : (editing.protocol === 'shadowsocks' ? null : 'password');
+      const rest = { ...v.params };
+      let userinfo = '';
+      if (editing.protocol === 'shadowsocks') {
+        userinfo = btoa(`${rest.method || ''}:${rest.password || ''}`).replace(/=+$/, '');
+        delete rest.method; delete rest.password;
+      } else {
+        userinfo = encodeURIComponent(rest[key] || '').replace(/%3A/g, ':');
+        delete rest[key];
+      }
+      const query = Object.entries(rest).filter(([, val]) => val !== '')
+        .map(([k, val]) => `${encodeURIComponent(k)}=${encodeURIComponent(val)}`).join('&');
+      uri = `${editing.protocol}://${userinfo}@${v.address}:${v.port}` + (query ? '?' + query : '');
+      if (v.alias) uri += '#' + encodeURIComponent(v.alias);
+    }
+    document.getElementById('uriPreview').value = uri;
+  }
+
+  async function openEditor(hash) {
+    try {
+      const form = await api('/configs/' + hash + '/fields');
+      editing = { uri_hash: hash, protocol: form.protocol, suggested: form.suggested };
+      document.getElementById('edProto').textContent = form.protocol;
+      document.getElementById('edAlias').value = form.alias || '';
+      document.getElementById('edAddress').value = form.address || '';
+      document.getElementById('edPort').value = form.port || '';
+      document.getElementById('edFields').innerHTML = form.fields.map(paramRow).join('');
+      const add = document.getElementById('edAdd');
+      add.innerHTML = form.suggested.length
+        ? '<option value="">Choose a parameter...</option>' +
+          form.suggested.map(f => `<option value="${esc(f.key)}">${esc(f.label)}</option>`).join('')
+        : '<option value="">Nothing left to suggest</option>';
+      document.getElementById('edHint').textContent = '';
+      document.getElementById('overlay').classList.add('show');
+      refreshPreview();
+    } catch (err) { toast(err.message); }
+  }
+
+  function closeEditor() {
+    document.getElementById('overlay').classList.remove('show');
+    editing = null;
+  }
+
+  document.getElementById('edClose').onclick = closeEditor;
+  document.getElementById('edCancel').onclick = closeEditor;
+  document.getElementById('overlay').addEventListener('click', e => {
+    if (e.target.id === 'overlay') closeEditor();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && editing) closeEditor();
+  });
+
+  document.getElementById('editor').addEventListener('input', () => { if (editing) refreshPreview(); });
+  document.getElementById('editor').addEventListener('change', () => { if (editing) refreshPreview(); });
+
+  document.getElementById('edFields').addEventListener('click', e => {
+    if (!e.target.classList.contains('drop')) return;
+    e.target.closest('.frow').remove();
+    refreshPreview();
+  });
+
+  document.getElementById('edAddBtn').onclick = () => {
+    const custom = document.getElementById('edAddCustom').value.trim();
+    const key = custom || document.getElementById('edAdd').value;
+    if (!key) return;
+    if (document.querySelector(`#edFields [data-param="${CSS.escape(key)}"]`)) {
+      toast('That parameter is already there');
+      return;
+    }
+    const known = editing.suggested.find(f => f.key === key);
+    document.getElementById('edFields').insertAdjacentHTML('beforeend',
+      paramRow({ key, label: known ? known.label : key, value: '', options: known ? known.options : null }));
+    document.getElementById('edAddCustom').value = '';
+    refreshPreview();
+  };
+
+  document.getElementById('edSave').onclick = async () => {
+    const button = document.getElementById('edSave');
+    button.disabled = true;
+    try {
+      await api('/configs/' + editing.uri_hash + '/fields', {
+        method: 'PUT',
+        body: JSON.stringify(editorValues()),
+      });
+      toast('Saved');
+      closeEditor();
+      await loadPool(); loadStatus();
+    } catch (err) {
+      document.getElementById('edHint').textContent = err.message;
+      toast(err.message);
+    } finally { button.disabled = false; }
   };
 
   // ---------------------------------------------------------------- tabs

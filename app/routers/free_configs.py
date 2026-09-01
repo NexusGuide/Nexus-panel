@@ -14,9 +14,12 @@ from fastapi.responses import HTMLResponse
 
 from app.db import AsyncSession, get_db
 from app.free_configs import crud, service, settings as settings_module
+from app.free_configs.fields import ConfigFieldsError, as_form, build as build_uri
 from app.free_configs.parser import parse_uri
 from app.free_configs.schemas import (
     BulkOverrideUpdate,
+    ConfigFieldsResponse,
+    ConfigFieldsUpdate,
     FreeConfigOverrideUpdate,
     FreeConfigPage,
     FreeConfigResponse,
@@ -210,6 +213,61 @@ async def update_config(
     if config is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No config with that hash in the pool")
     return _to_response(config, override)
+
+
+@router.get("/configs/{uri_hash}/fields", response_model=ConfigFieldsResponse)
+async def get_config_fields(
+    uri_hash: str,
+    db: AsyncSession = Depends(get_db),
+    _: AdminDetails = Depends(require_owner),
+):
+    """Break one config into editable fields - address, port, UUID, SNI, and the rest."""
+    config = await crud.get_config_by_hash(db, uri_hash)
+    if config is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No config with that hash in the pool")
+    try:
+        form = as_form(config.uri)
+    except ConfigFieldsError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+    override = await crud.get_override(db, uri_hash)
+    if override is not None and override.remark:
+        form["alias"] = override.remark
+    return ConfigFieldsResponse(**form)
+
+
+@router.put("/configs/{uri_hash}/fields", response_model=FreeConfigResponse)
+async def update_config_fields(
+    uri_hash: str,
+    payload: ConfigFieldsUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: AdminDetails = Depends(require_owner),
+):
+    """Save an edited config.
+
+    Changing an address, credential or SNI makes this a different proxy, so the
+    result is stored as a manual entry and the original is switched off. Editing
+    only the name leaves the config where it was.
+    """
+    existing = await crud.get_config_by_hash(db, uri_hash)
+    if existing is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No config with that hash in the pool")
+
+    try:
+        uri = build_uri(existing.protocol, payload.alias, payload.address, payload.port, dict(payload.params))
+    except ConfigFieldsError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+    parsed = parse_uri(uri)
+    if parsed is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Those values do not make a usable config - check the address and port",
+        )
+
+    config = await crud.replace_with_edited(db, uri_hash, parsed, remark=payload.alias or None)
+    await service.invalidate_pool_cache()
+    return _to_response(config, await crud.get_override(db, parsed.uri_hash))
 
 
 @router.post("/configs/bulk", status_code=status.HTTP_200_OK)

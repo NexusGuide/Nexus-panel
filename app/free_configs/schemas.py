@@ -166,3 +166,34 @@ class GroupAccessUpdate(BaseModel):
 
 class GroupAccessResponse(BaseModel):
     group_ids: list[int] = Field(default_factory=list)
+
+
+class ConfigFieldOption(BaseModel):
+    key: str
+    label: str
+    value: str = ""
+    options: list[str] | None = None
+    secret: bool = False
+
+
+class ConfigFieldsResponse(BaseModel):
+    """One config broken into the parts a client would show you."""
+
+    protocol: str
+    alias: str = ""
+    address: str
+    port: int
+    uri: str
+    fields: list[ConfigFieldOption] = Field(default_factory=list)
+    suggested: list[ConfigFieldOption] = Field(
+        default_factory=list, description="parameters this protocol commonly has but this config does not"
+    )
+
+
+class ConfigFieldsUpdate(BaseModel):
+    """The edited config. `params` replaces the parameter set outright."""
+
+    alias: str = Field(default="", max_length=256)
+    address: str = Field(max_length=256)
+    port: int = Field(ge=1, le=65535)
+    params: dict[str, str] = Field(default_factory=dict)

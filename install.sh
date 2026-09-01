@@ -122,6 +122,16 @@ EOF
     done
 }
 
+pool_size() {
+    local svc
+    svc="$(compose config --services | head -1)"
+    compose exec -T "$svc" python -c \
+        "import asyncio; from app.db import GetDB; from app.free_configs import crud
+async def m():
+    async with GetDB() as db: print((await crud.get_pool_stats(db)).get('total', 0))
+asyncio.run(m())" 2>/dev/null | tr -dc '0-9'
+}
+
 seed_and_refresh() {
     local svc
     svc="$(compose config --services | head -1)"
@@ -129,6 +139,16 @@ seed_and_refresh() {
     info "adding the default community sources ..."
     compose exec -T "$svc" python scripts/seed_free_configs.py \
         || { warn "seeding failed - add sources via POST /api/free-configs/sources"; return; }
+
+    # Re-applying the fork (after an official update, say) should not spend a
+    # minute rebuilding a pool that is already there. A first install always
+    # will, because the pool is empty.
+    local have
+    have="$(pool_size)"
+    if [ -n "$have" ] && [ "$have" -gt 0 ] 2>/dev/null; then
+        info "the pool already holds ${have} configs - leaving it to the scheduled job"
+        return
+    fi
 
     info "building the pool for the first time (fetches and health-checks; takes a while) ..."
     compose exec -T "$svc" python -c \
@@ -194,6 +214,9 @@ main() {
         apply)
             require_root
             apply_fork
+            # seeding is idempotent and the refresh is skipped when the pool is
+            # already populated, so this is safe to run on every apply
+            [ "$DO_SEED" -eq 1 ] && [ "$ENABLE" = "true" ] && seed_and_refresh
             summary
             ;;
         update)

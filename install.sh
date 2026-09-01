@@ -18,6 +18,8 @@
 #   --listen <addr>   bind address (default 127.0.0.1 - keep it behind a proxy)
 #   --no-seed         do not add the default sources
 #   --no-free-configs install plain upstream behaviour, feature disabled
+#   --build           build the image from source instead of pulling it
+#                     (happens automatically if the pull fails)
 #
 set -euo pipefail
 
@@ -31,6 +33,7 @@ PORT=8000
 LISTEN="127.0.0.1"
 DO_SEED=1
 FREE_CONFIGS=true
+FROM_SOURCE=0
 
 RED=$'\033[31m'; GREEN=$'\033[32m'; YELLOW=$'\033[33m'; BOLD=$'\033[1m'; RESET=$'\033[0m'
 info()  { echo "${GREEN}==>${RESET} $*"; }
@@ -96,6 +99,33 @@ EOF
     chmod 600 "${INSTALL_DIR}/.env"
 }
 
+build_from_source() {
+    local src="${INSTALL_DIR}/src"
+    info "building the image from source (a few minutes on first run) ..."
+
+    if command -v git >/dev/null 2>&1; then
+        if [ -d "${src}/.git" ]; then
+            git -C "$src" fetch --depth 1 origin main && git -C "$src" reset --hard origin/main
+        else
+            rm -rf "$src"
+            git clone --depth 1 "https://github.com/${REPO}.git" "$src"
+        fi
+    else
+        info "git is missing, downloading a source tarball instead ..."
+        rm -rf "$src" && mkdir -p "$src"
+        curl -fsSL "https://github.com/${REPO}/archive/refs/heads/main.tar.gz" \
+            | tar -xz -C "$src" --strip-components=1
+    fi
+
+    # --network=host: Docker's bridge network cannot resolve DNS on many VPSes,
+    # which makes apt-get inside the build fail with "Temporary failure resolving".
+    docker build --network=host -t "$IMAGE" "$src" \
+        || die "the build failed. Check the output above; if it stopped at apt-get, it is a DNS problem in Docker - see FREE_CONFIGS.md."
+
+    warn "built without the compiled dashboard, so the web UI is not served."
+    warn "the API and the free-configs feature work normally; publish the CI image for the full UI."
+}
+
 wait_for_health() {
     info "waiting for the panel to come up ..."
     for _ in $(seq 1 60); do
@@ -127,14 +157,17 @@ cmd_install() {
     write_compose
     write_env
 
-    info "pulling ${IMAGE} ..."
-    if ! $COMPOSE pull; then
-        die "could not pull the image.
-If the GHCR package is still private, make it public:
-  https://github.com/${REPO}  ->  Packages  ->  Package settings  ->  Change visibility
-Or build locally instead:
-  git clone https://github.com/${REPO}.git && cd pasarguard-free-configs
-  docker build --network=host -t ${IMAGE} ."
+    if [ "$FROM_SOURCE" -eq 1 ]; then
+        build_from_source
+    else
+        info "pulling ${IMAGE} ..."
+        if ! $COMPOSE pull 2>&1; then
+            warn "could not pull ${IMAGE}"
+            warn "the GHCR package is probably still private or not published yet:"
+            warn "  https://github.com/${REPO} -> Packages -> Package settings -> Change visibility"
+            warn "falling back to building from source ..."
+            build_from_source
+        fi
     fi
 
     info "starting ..."
@@ -220,6 +253,7 @@ main() {
             --listen) LISTEN="$2"; shift 2 ;;
             --no-seed) DO_SEED=0; shift ;;
             --no-free-configs) FREE_CONFIGS=false; shift ;;
+            --build) FROM_SOURCE=1; shift ;;
             *) die "unknown option: $1" ;;
         esac
     done

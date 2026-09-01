@@ -39,6 +39,7 @@ EDITABLE = (
     "max_per_endpoint",
     "max_per_subscription",
     "remark_prefix",
+    "serve_to",
 )
 
 _CACHE_TTL_SECONDS = 10
@@ -57,6 +58,7 @@ class EffectiveSettings:
     max_per_endpoint: int
     max_per_subscription: int
     remark_prefix: str
+    serve_to: str
 
 
 def _from_env() -> EffectiveSettings:
@@ -72,6 +74,7 @@ def _from_env() -> EffectiveSettings:
         max_per_endpoint=env_settings.max_per_endpoint,
         max_per_subscription=env_settings.max_per_subscription,
         remark_prefix=env_settings.remark_prefix,
+        serve_to=env_settings.serve_to,
     )
 
 

@@ -560,6 +560,8 @@
 
   const FIELDS = [
     ['mode', 'Who gets them', 'select', ['all', 'groups'], 'all = every user; groups = only members of opted-in groups'],
+    ['serve_to', 'User states served', 'select', ['active', 'not_disabled', 'everyone'],
+      'Traffic through free configs cannot be metered - it never touches this panel - so an expired user who keeps receiving them keeps working forever. "active" is the safe choice; loosen it only if free configs are your whole offering.'],
     ['remark_prefix', 'Label prefix', 'text', null, 'Prepended to each free entry so users can tell them apart'],
     ['max_per_subscription', 'Configs per subscription', 'number', null, 'Fastest first. 0 = every enabled config'],
     ['max_per_endpoint', 'Configs per server', 'number', null, 'They all fail together, so a handful is as useful as thirty. 0 = no limit'],

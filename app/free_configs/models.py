@@ -119,6 +119,7 @@ class FreeConfigSetting(Base, IdMixin):
     max_per_endpoint: Mapped[int | None] = mapped_column(default=None, nullable=True)
     max_per_subscription: Mapped[int | None] = mapped_column(default=None, nullable=True)
     remark_prefix: Mapped[str | None] = mapped_column(String(64), default=None, nullable=True)
+    serve_to: Mapped[str | None] = mapped_column(String(16), default=None, nullable=True)
     # can only switch the feature off; FREE_CONFIGS_ENABLED in .env still has to
     # be true for any of this to run, so a fork install stays off by default
     disabled: Mapped[bool] = mapped_column(default=False, nullable=False, server_default="0")

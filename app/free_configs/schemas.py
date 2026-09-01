@@ -108,7 +108,18 @@ class FreeConfigSettingsUpdate(BaseModel):
     max_per_endpoint: int | None = Field(default=None, ge=0)
     max_per_subscription: int | None = Field(default=None, ge=0)
     remark_prefix: str | None = Field(default=None, max_length=64)
+    serve_to: str | None = None
     disabled: bool | None = None
+
+    @field_validator("serve_to", mode="after")
+    @classmethod
+    def validate_serve_to(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip().lower()
+        if value not in ("active", "not_disabled", "everyone"):
+            raise ValueError('serve_to must be "active", "not_disabled" or "everyone"')
+        return value
 
     @field_validator("mode", mode="after")
     @classmethod

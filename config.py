@@ -158,6 +158,20 @@ class FreeConfigsSettings(EnvSettings):
     max_per_subscription: int = Field(default=100, ge=0, validation_alias="FREE_CONFIGS_MAX_PER_SUBSCRIPTION")
     # prepended to each free entry's remark so users can tell them apart in their client
     remark_prefix: str = Field(default="🆓", validation_alias="FREE_CONFIGS_REMARK_PREFIX")
+    # Which user states still receive free configs. Traffic through these
+    # configs cannot be metered - it never touches this panel - so an expired or
+    # limited user who keeps receiving them keeps working forever. Default is
+    # therefore "active" only. A panel whose whole offering is free configs may
+    # want something looser, hence the setting.
+    serve_to: str = Field(default="active", validation_alias="FREE_CONFIGS_SERVE_TO")
+
+    @field_validator("serve_to", mode="after")
+    @classmethod
+    def validate_serve_to(cls, value: str) -> str:
+        value = (value or "").strip().lower()
+        if value not in ("active", "not_disabled", "everyone"):
+            raise ValueError('FREE_CONFIGS_SERVE_TO must be "active", "not_disabled" or "everyone"')
+        return value
 
     @field_validator("mode", mode="after")
     @classmethod

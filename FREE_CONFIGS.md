@@ -27,6 +27,19 @@ internet. So they cannot be nodes, and this feature does not pretend otherwise:
 | Disconnect a single user       | ✅ | ❌ |
 | Uptime you control             | ✅ | ❌ |
 
+**Traffic through a free config cannot be counted.** It goes from the user's
+device straight to a stranger's server; this panel is not on that path, so there
+is nothing to meter. A user's usage will show 0 no matter how much they move
+through them, and no data limit can apply. Relaying the traffic through a
+machine you own would fix that — but then it is your node, and you are paying
+for the bandwidth.
+
+That has a consequence worth planning for: a user who has expired or hit their
+limit would keep working forever on free configs alone. `FREE_CONFIGS_SERVE_TO`
+decides who still receives them — `active` (the default) stops there, while
+`not_disabled` or `everyone` deliberately keeps serving expired users, which is
+what a panel whose entire offering is free configs may actually want.
+
 **Do not sell these as a metered service.** They are appropriate as a clearly-labelled
 free tier, a trial, or a fallback — and every entry is prefixed in the client
 (`🆓` by default) so users can see which is which.
@@ -165,6 +178,7 @@ FREE_CONFIGS_REFRESH_INTERVAL = 86400
 | `FREE_CONFIGS_MAX_PER_ENDPOINT` | `3` | how many configs one server may contribute (0 = all) |
 | `FREE_CONFIGS_MAX_PER_SUBSCRIPTION` | `100` | cap per user subscription (0 = all healthy) |
 | `FREE_CONFIGS_REMARK_PREFIX` | `🆓` | label prepended to each free entry |
+| `FREE_CONFIGS_SERVE_TO` | `active` | which user states still get them: `active`, `not_disabled`, `everyone` |
 
 ### 3. Add sources
 

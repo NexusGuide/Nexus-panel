@@ -21,9 +21,20 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
 
+# The compiled dashboard is taken straight from upstream's published image.
+# This fork changes only backend code - no dashboard source is touched - so the
+# official build is exactly the right one, and lifting it here means a plain
+# `docker build` produces a complete panel with its web UI. The alternative,
+# compiling it with bun during the build, needs a Node toolchain and only ever
+# reproduces the same output.
+# Override with --build-arg DASHBOARD_IMAGE=... to pin a specific upstream tag.
+ARG DASHBOARD_IMAGE=pasarguard/panel:latest
+FROM ${DASHBOARD_IMAGE} AS dashboard_src
+
 FROM python:$PYTHON_VERSION-slim-bookworm
 
 COPY --from=builder /build /code
+COPY --from=dashboard_src /code/dashboard/build /code/dashboard/build
 WORKDIR /code
 
 # CI compiles the dashboard into dashboard/build before the image is built (see

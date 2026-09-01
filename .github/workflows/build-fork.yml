@@ -7,6 +7,9 @@
 #     with the built-in GITHUB_TOKEN - no secrets to configure.
 #   - build.yml only runs on a published release. This also runs on every push
 #     to main, so `:latest` tracks the branch and there is always an image.
+#   - it compiles the dashboard with bun first; this one does not need to,
+#     because the Dockerfile copies the compiled dashboard out of upstream's
+#     published image.
 #
 # ONE-TIME SETUP after the first successful run:
 #   the GHCR package is created private. Make it public so installs work without
@@ -26,46 +29,11 @@ permissions:
     packages: write
 
 jobs:
-    build-dashboard:
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
-
-            - name: Setup Bun
-              uses: oven-sh/setup-bun@v2
-              with:
-                  bun-version: latest
-
-            - name: Install dependencies
-              working-directory: ./dashboard
-              run: bun install --frozen-lockfile
-
-            # The runtime image expects dashboard/build/ to already exist - the
-            # panel shells out to `bun` to build it otherwise, and bun is not in
-            # the production image.
-            - name: Build dashboard
-              run: ./build_dashboard.sh
-
-            - name: Upload dashboard build
-              uses: actions/upload-artifact@v4
-              with:
-                  name: dashboard-build
-                  path: ./dashboard/build/
-                  retention-days: 1
-
     build-image:
-        needs: build-dashboard
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
               uses: actions/checkout@v4
-
-            - name: Download dashboard build
-              uses: actions/download-artifact@v4
-              with:
-                  name: dashboard-build
-                  path: ./dashboard/build/
 
             - name: Lowercase the image name
               id: image
@@ -95,6 +63,8 @@ jobs:
                       type=sha,format=short
                       type=raw,value=latest,enable={{is_default_branch}}
 
+            # The Dockerfile lifts the compiled dashboard out of upstream's
+            # published image, so there is no Node toolchain step here.
             - name: Build and push
               uses: docker/build-push-action@v6
               with:

@@ -119,6 +119,10 @@ status | cli | backup | uninstall`. Only these are the wrapper's:
 > ```
 > (`--network=host` because Docker's bridge network cannot resolve DNS on many
 > VPSes, which makes `apt-get` inside the build fail.)
+>
+> A local build is a complete panel, web UI included: the Dockerfile copies the
+> compiled dashboard out of upstream's published image rather than compiling it,
+> since this fork changes no dashboard source.
 
 ## Running from source (development)
 

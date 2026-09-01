@@ -115,11 +115,31 @@ EOF
     fi
     compose up -d
 
-    info "waiting for the panel ..."
-    for _ in $(seq 1 45); do
-        compose exec -T "$(compose config --services | head -1)" true >/dev/null 2>&1 && break
+    # The container accepts `exec` well before it is ready: start.sh runs
+    # `alembic upgrade head` first, and seeding against a half-migrated schema
+    # fails with "no such table: free_config_sources". So wait for the schema,
+    # not for the container.
+    info "waiting for the panel to finish its migrations ..."
+    local svc ready=0
+    svc="$(compose config --services | head -1)"
+    for _ in $(seq 1 90); do
+        if compose exec -T "$svc" python -c \
+            "import asyncio
+from sqlalchemy import text
+from app.db import GetDB
+async def m():
+    async with GetDB() as db:
+        await db.execute(text('select 1 from free_config_sources'))
+asyncio.run(m())" >/dev/null 2>&1; then
+            ready=1
+            break
+        fi
         sleep 2
     done
+    if [ "$ready" -eq 0 ]; then
+        warn "the free-configs tables did not appear within three minutes"
+        warn "check \`pasarguard logs\` for the alembic output, then re-run: $0 apply"
+    fi
 }
 
 pool_size() {

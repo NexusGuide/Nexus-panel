@@ -98,6 +98,7 @@ EOF
     # release - it kept running with a stale value and no sign of it.
     # A value already in the file is left alone (it may be a deliberate choice)
     # but is reported when it differs from what this version recommends.
+    ENV_CHANGED=0
     set_env() {
         local key="$1" value="$2" current
         if grep -qE "^${key}=" "$ENV_FILE"; then
@@ -107,6 +108,7 @@ EOF
             fi
         else
             printf '%s=%s\n' "$key" "$value" >> "$ENV_FILE"
+            ENV_CHANGED=1
         fi
     }
 
@@ -139,7 +141,16 @@ EOF
         warn "  docker build --network=host -t ${IMAGE} ."
         die "aborting before restarting, so your panel keeps running on its current image"
     fi
-    compose up -d
+    # A container keeps the environment it was started with. `compose restart`
+    # does not re-read .env at all, and `compose up -d` will happily report
+    # "up-to-date" when only env_file contents changed - so a settings change
+    # would silently not take effect. Recreate whenever we touched .env.
+    if [ "$ENV_CHANGED" -eq 1 ]; then
+        info "settings changed - recreating the container so it picks them up ..."
+        compose up -d --force-recreate
+    else
+        compose up -d
+    fi
 
     # The container accepts `exec` well before it is ready: start.sh runs
     # `alembic upgrade head` first, and seeding against a half-migrated schema

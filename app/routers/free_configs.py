@@ -32,8 +32,10 @@ from app.free_configs.schemas import (
     ManualConfigCreate,
 )
 from app.free_configs.schemas import (
+    GroupAccessOne,
     GroupAccessResponse,
     GroupAccessUpdate,
+    GroupFreeConfigState,
     GroupAssignmentPatch,
     GroupAssignmentUpdate,
     GroupSummary,
@@ -395,6 +397,39 @@ async def list_group_summaries(db: AsyncSession = Depends(get_db), _: AdminDetai
         )
         for group_id, name in await crud.list_groups(db)
     ]
+
+
+@router.get("/groups/{group_id}/state", response_model=GroupFreeConfigState)
+async def get_group_state(
+    group_id: int, db: AsyncSession = Depends(get_db), _: AdminDetails = Depends(require_owner)
+):
+    """One group's free-config settings, for the panel's own group dialog."""
+    enabled = group_id in set(await crud.get_enabled_group_ids(db))
+    hashes = await crud.get_group_assignments(db, group_id)
+    return GroupFreeConfigState(
+        group_id=group_id, enabled=enabled, uri_hashes=hashes, gets_whole_pool=enabled and not hashes
+    )
+
+
+@router.put("/groups/{group_id}/access", response_model=GroupFreeConfigState)
+async def set_group_access_one(
+    group_id: int,
+    payload: GroupAccessOne,
+    db: AsyncSession = Depends(get_db),
+    _: AdminDetails = Depends(require_owner),
+):
+    """Opt one group in or out, leaving every other group alone."""
+    try:
+        await crud.set_group_access_one(db, group_id, payload.enabled)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    await service.invalidate_access_cache()
+    await service.invalidate_pool_cache()
+    hashes = await crud.get_group_assignments(db, group_id)
+    return GroupFreeConfigState(
+        group_id=group_id, enabled=payload.enabled, uri_hashes=hashes,
+        gets_whole_pool=payload.enabled and not hashes,
+    )
 
 
 @router.get("/groups/{group_id}/configs", response_model=list[str])

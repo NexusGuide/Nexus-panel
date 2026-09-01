@@ -220,6 +220,12 @@ curl https://panel.example.com/api/free-configs/status -H "Authorization: Bearer
   fingerprint, ALPN - every parameter the config carries, with the resulting URI
   shown live as you type. Parameters can be added or removed, including keys the
   panel has never heard of.
+Groups can also be set up from **the panel's own Create/Edit Group dialog**,
+where a Free Configs section sits under Inbound Tags - so a group is configured
+in one place, at the moment it is created. The Groups tab below is the same
+settings seen from the other direction, useful when changing several groups at
+once.
+
 - **Groups** - the same idea as a group's inbounds. Tick which groups receive
   free configs at all, then give a group specific configs and its members get
   exactly those. A group that receives free configs but has none picked gets the
@@ -288,6 +294,8 @@ fork adds no new RBAC resource, which keeps the diff against upstream small.)
 | `GET` | `/api/free-configs/groups/{id}/configs` | one group's assigned configs |
 | `PUT` | `/api/free-configs/groups/{id}/configs` | replace them (empty = whole pool) |
 | `POST` | `/api/free-configs/groups/{id}/configs` | add or remove some of them |
+| `GET` | `/api/free-configs/groups/{id}/state` | one group's settings, for the group dialog |
+| `PUT` | `/api/free-configs/groups/{id}/access` | opt one group in or out |
 
 ---
 

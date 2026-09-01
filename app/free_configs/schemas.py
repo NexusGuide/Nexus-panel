@@ -220,3 +220,16 @@ class GroupAssignmentPatch(BaseModel):
 
     uri_hashes: list[str] = Field(default_factory=list, max_length=5000)
     action: str = Field(default="add", pattern="^(add|remove)$")
+
+
+class GroupAccessOne(BaseModel):
+    enabled: bool
+
+
+class GroupFreeConfigState(BaseModel):
+    """Everything the panel's own group dialog needs for one group."""
+
+    group_id: int | None = None
+    enabled: bool = False
+    uri_hashes: list[str] = Field(default_factory=list)
+    gets_whole_pool: bool = True

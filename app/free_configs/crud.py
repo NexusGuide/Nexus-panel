@@ -551,3 +551,28 @@ async def list_groups(db: AsyncSession) -> list[tuple[int, str]]:
     """Every group in the panel, for the assignment UI."""
     stmt = select(Group.id, Group.name).order_by(Group.name)
     return [(group_id, name) for group_id, name in (await db.execute(stmt)).all()]
+
+
+async def set_group_access_one(db: AsyncSession, group_id: int, enabled: bool) -> bool:
+    """Opt a single group in or out, without touching the others.
+
+    The list-wide PUT is fine for a page that shows every group at once, but the
+    panel's own group dialog only knows about the group being edited - sending
+    the whole list from there would silently clobber whatever another admin had
+    just changed.
+    """
+    existing = (
+        await db.execute(select(FreeConfigGroupAccess).where(FreeConfigGroupAccess.group_id == group_id))
+    ).scalar_one_or_none()
+
+    if enabled and existing is None:
+        if (await db.execute(select(Group.id).where(Group.id == group_id))).scalar_one_or_none() is None:
+            raise ValueError("No such group")
+        db.add(FreeConfigGroupAccess(group_id=group_id))
+    elif not enabled and existing is not None:
+        await db.delete(existing)
+        # its config choices go with it, so re-enabling later starts clean
+        await db.execute(delete(FreeConfigGroupConfig).where(FreeConfigGroupConfig.group_id == group_id))
+
+    await db.commit()
+    return enabled

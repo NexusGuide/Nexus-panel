@@ -15,7 +15,9 @@ import { cn } from '@/lib/utils'
 import { queryClient } from '@/utils/query-client'
 import useDynamicErrorHandler from '@/hooks/use-dynamic-errors.ts'
 import type { GroupFormValues } from '@/features/groups/forms/group-form'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+// fork feature
+import FreeConfigsSection, { type FreeConfigsSectionHandle } from '@/features/groups/free-configs-section'
 
 interface GroupModalProps {
   isDialogOpen: boolean
@@ -29,6 +31,8 @@ export default function GroupModal({ isDialogOpen, onOpenChange, form, editingGr
   const { t } = useTranslation()
   const handleError = useDynamicErrorHandler()
   const addGroupMutation = useCreateGroup()
+  // fork feature: saved after the group exists, since a new group has no id yet
+  const freeConfigsRef = useRef<FreeConfigsSectionHandle>(null)
   const modifyGroupMutation = useModifyGroup()
   const { data: inbounds, isLoading: isLoadingInbounds } = useGetInbounds({
     query: {
@@ -58,15 +62,19 @@ export default function GroupModal({ isDialogOpen, onOpenChange, form, editingGr
           groupId: editingGroupId,
           data: values,
         })
+        // fork feature
+        await freeConfigsRef.current?.save(editingGroupId)
         toast.success(
           t('group.editSuccess', {
             name: values.name,
           }),
         )
       } else {
-        await addGroupMutation.mutateAsync({
+        const created: any = await addGroupMutation.mutateAsync({
           data: values,
         })
+        // fork feature
+        await freeConfigsRef.current?.save(created?.id)
         toast.success(
           t('group.createSuccess', {
             name: values.name,
@@ -181,6 +189,8 @@ export default function GroupModal({ isDialogOpen, onOpenChange, form, editingGr
                   )
                 }}
               />
+              {/* fork feature */}
+              <FreeConfigsSection ref={freeConfigsRef} open={isDialogOpen} groupId={editingGroupId} />
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => onOpenChange(false)}>

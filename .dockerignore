@@ -22,7 +22,12 @@ venv*
 LICENSE
 install_service.sh
 PasarGuard.code-workspace
-scripts
+# scripts/ is dev tooling and stays out of the image, except the free-configs
+# seeder, which is meant to be run inside the container. Excluding the children
+# and re-including one file works around Docker's rule that a file cannot be
+# re-included once its parent directory is excluded (same trick as dashboard/).
+scripts/*
+!scripts/seed_free_configs.py
 
 # Dev tooling / CI (not used at runtime)
 Makefile

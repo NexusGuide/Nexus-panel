@@ -57,15 +57,28 @@ async def fetch_source(
     return FetchResult(source_id=source_id, url=url, configs=configs)
 
 
-async def fetch_sources(sources: list[tuple[int | None, str, bool]]) -> list[FetchResult]:
-    """Fetch every source concurrently.
+async def iter_fetched_sources(sources: list[tuple[int | None, str, bool]]):
+    """Fetch every source concurrently, yielding each result as it arrives.
+
+    Yielding (instead of returning one big list) lets the caller merge a
+    source's configs into its dedup map and drop the per-source list right
+    away, which keeps peak memory down on large source lists.
 
     ``sources`` is a list of ``(source_id, url, is_base64)`` tuples.
     """
     timeout = aiohttp.ClientTimeout(total=free_configs_settings.fetch_timeout)
     async with aiohttp.ClientSession(timeout=timeout) as session:
-        tasks = [fetch_source(session, url, is_base64, source_id) for source_id, url, is_base64 in sources]
-        return list(await asyncio.gather(*tasks))
+        tasks = [
+            asyncio.create_task(fetch_source(session, url, is_base64, source_id))
+            for source_id, url, is_base64 in sources
+        ]
+        try:
+            for coro in asyncio.as_completed(tasks):
+                yield await coro
+        finally:
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
 
 
 async def check_config(config: ParsedConfig, semaphore: asyncio.Semaphore) -> HealthResult:
@@ -96,11 +109,21 @@ async def check_config(config: ParsedConfig, semaphore: asyncio.Semaphore) -> He
                     pass
 
 
-async def check_configs(configs: list[ParsedConfig]) -> list[HealthResult]:
-    """Health-check a batch of configs with bounded concurrency."""
+async def iter_checked_batches(configs: list[ParsedConfig], batch_size: int = 500):
+    """Health-check configs in bounded batches, yielding each batch's results.
+
+    One giant ``asyncio.gather`` over every config allocates a coroutine, a task
+    and a result object per entry up front - with tens of thousands of configs
+    that is enough to get the process OOM-killed. Batching keeps the number of
+    live objects flat regardless of pool size.
+    """
     if not free_configs_settings.health_check:
         # health checking disabled: keep everything, mark unknown latency
-        return [HealthResult(config=config, is_healthy=True) for config in configs]
+        for start in range(0, len(configs), batch_size):
+            yield [HealthResult(config=config, is_healthy=True) for config in configs[start : start + batch_size]]
+        return
 
     semaphore = asyncio.Semaphore(free_configs_settings.max_concurrency)
-    return list(await asyncio.gather(*[check_config(config, semaphore) for config in configs]))
+    for start in range(0, len(configs), batch_size):
+        batch = configs[start : start + batch_size]
+        yield list(await asyncio.gather(*[check_config(config, semaphore) for config in batch]))

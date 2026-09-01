@@ -12,7 +12,7 @@ from aiocache import cached
 
 from app.db import GetDB
 from app.free_configs import crud
-from app.free_configs.fetcher import HealthResult, check_configs, fetch_sources
+from app.free_configs.fetcher import HealthResult, iter_checked_batches, iter_fetched_sources
 from app.free_configs.parser import ParsedConfig, label_uri
 from app.utils.logger import get_logger
 from config import free_configs_settings
@@ -55,43 +55,54 @@ async def refresh_pool() -> dict:
 
                 source_specs = [(source.id, source.url, source.is_base64) for source in sources]
 
-            results = await fetch_sources(source_specs)
-
-            # dedupe across sources, remembering which source first supplied each URI
+            # Dedupe across sources as results arrive, remembering which source
+            # first supplied each URI. Each source's own list is dropped as soon
+            # as it has been merged, so peak memory does not scale with the
+            # number of sources.
             unique: dict[str, ParsedConfig] = {}
             origin: dict[str, int | None] = {}
+            outcomes: list[tuple[int, int, str | None]] = []
             fetched_total = 0
             errors: list[dict] = []
 
-            for result in results:
+            async for result in iter_fetched_sources(source_specs):
                 fetched_total += len(result.configs)
                 if not result.ok:
                     errors.append({"url": result.url, "error": result.error})
+                if result.source_id is not None:
+                    outcomes.append((result.source_id, len(result.configs), result.error))
                 for config in result.configs:
                     if config.uri_hash not in unique:
                         unique[config.uri_hash] = config
                         origin[config.uri_hash] = result.source_id
+                result.configs.clear()
 
             candidates = list(unique.values())
+            unique.clear()
             if free_configs_settings.max_configs > 0:
                 candidates = candidates[: free_configs_settings.max_configs]
 
             logger.info(
                 "free-configs: %d fetched, %d unique, health-checking %d",
                 fetched_total,
-                len(unique),
+                len(origin),
                 len(candidates),
             )
 
-            health_results: list[HealthResult] = await check_configs(candidates)
+            # Keep only the healthy ones: on a big pool the unhealthy majority
+            # is both useless and the bulk of the memory.
+            healthy_results: list[HealthResult] = []
+            checked = 0
+            async for batch in iter_checked_batches(candidates):
+                checked += len(batch)
+                healthy_results.extend(result for result in batch if result.is_healthy)
+                logger.debug("free-configs: checked %d/%d, %d healthy", checked, len(candidates), len(healthy_results))
+            candidates.clear()
 
             async with GetDB() as db:
-                healthy_count = await crud.replace_configs(db, health_results, origin)
-                for result in results:
-                    if result.source_id is not None:
-                        await crud.record_fetch_outcome(
-                            db, result.source_id, len(result.configs), result.error, commit=False
-                        )
+                healthy_count = await crud.replace_configs(db, healthy_results, origin)
+                for source_id, count, error in outcomes:
+                    await crud.record_fetch_outcome(db, source_id, count, error, commit=False)
                 await db.commit()
 
             # the pool changed - drop the cached read path
@@ -101,7 +112,7 @@ async def refresh_pool() -> dict:
             stats = {
                 "sources": len(source_specs),
                 "fetched": fetched_total,
-                "unique": len(unique),
+                "unique": len(origin),
                 "healthy": healthy_count,
                 "duration_seconds": round(duration, 1),
                 "errors": errors,
@@ -110,7 +121,7 @@ async def refresh_pool() -> dict:
                 "free-configs: refresh done in %.1fs - %d healthy of %d checked",
                 duration,
                 healthy_count,
-                len(candidates),
+                checked,
             )
             _last_refresh.update({"at": started, "stats": stats})
             return stats

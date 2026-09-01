@@ -23,7 +23,9 @@ SUPPORTED_SCHEMES = (
 )
 
 
-@dataclass(frozen=True)
+# slots matter here: a refresh can hold tens of thousands of these at once,
+# and dropping the per-instance __dict__ cuts that memory roughly in half.
+@dataclass(frozen=True, slots=True)
 class ParsedConfig:
     uri: str
     protocol: str

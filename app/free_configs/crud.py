@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime as dt
 
-from sqlalchemy import delete, exists, func, select, update
+from sqlalchemy import delete, exists, func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Group, users_groups_association
@@ -78,6 +78,9 @@ async def record_fetch_outcome(
 # --------------------------------------------------------------------------- #
 
 
+INSERT_CHUNK_SIZE = 500
+
+
 async def replace_configs(db: AsyncSession, results: list[HealthResult], source_ids: dict[str, int | None]) -> int:
     """Swap the pool for a freshly harvested one.
 
@@ -85,29 +88,39 @@ async def replace_configs(db: AsyncSession, results: list[HealthResult], source_
     simpler and more correct than trying to merge: entries that vanished from
     every upstream source should stop being served.
 
-    Returns the number of healthy configs stored.
-    """
-    await db.execute(delete(FreeConfig))
+    Only healthy configs are stored - an unhealthy entry is of no use to a
+    subscription, and keeping tens of thousands of dead ones was both a memory
+    and a disk cost for nothing.
 
+    Rows go in as plain dicts through Core in chunks rather than as ORM
+    instances: building one mapped object per config is what pushed a large
+    refresh into an OOM kill.
+
+    Returns the number of configs stored.
+    """
     now = dt.now(UTC)
     rows = [
-        FreeConfig(
-            uri=result.config.uri,
-            uri_hash=result.config.uri_hash,
-            protocol=result.config.protocol,
-            address=result.config.address,
-            port=result.config.port,
-            is_healthy=result.is_healthy,
-            latency_ms=result.latency_ms,
-            last_checked_at=now,
-            source_id=source_ids.get(result.config.uri_hash),
-        )
+        {
+            "uri": result.config.uri,
+            "uri_hash": result.config.uri_hash,
+            "protocol": result.config.protocol,
+            "address": result.config.address,
+            "port": result.config.port,
+            "is_healthy": True,
+            "latency_ms": result.latency_ms,
+            "last_checked_at": now,
+            "source_id": source_ids.get(result.config.uri_hash),
+            "created_at": now,
+        }
         for result in results
+        if result.is_healthy
     ]
-    if rows:
-        db.add_all(rows)
+
+    await db.execute(delete(FreeConfig))
+    for start in range(0, len(rows), INSERT_CHUNK_SIZE):
+        await db.execute(insert(FreeConfig), rows[start : start + INSERT_CHUNK_SIZE])
     await db.commit()
-    return sum(1 for result in results if result.is_healthy)
+    return len(rows)
 
 
 async def get_healthy_configs(db: AsyncSession, limit: int = 0) -> list[str]:

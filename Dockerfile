@@ -1,5 +1,12 @@
 ARG PYTHON_VERSION=3.14
 
+# Both of these must be declared here, before the first FROM: an ARG written
+# after a FROM belongs to that build stage only, so it would expand to an empty
+# string in a later `FROM ${...}` line and the build would fail with
+# "base name should not be blank".
+# Override with --build-arg DASHBOARD_IMAGE=... to pin a specific upstream tag.
+ARG DASHBOARD_IMAGE=pasarguard/panel:latest
+
 FROM ghcr.io/astral-sh/uv:python$PYTHON_VERSION-bookworm-slim AS builder
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 
@@ -27,9 +34,11 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # `docker build` produces a complete panel with its web UI. The alternative,
 # compiling it with bun during the build, needs a Node toolchain and only ever
 # reproduces the same output.
-# Override with --build-arg DASHBOARD_IMAGE=... to pin a specific upstream tag.
-ARG DASHBOARD_IMAGE=pasarguard/panel:latest
-FROM ${DASHBOARD_IMAGE} AS dashboard_src
+#
+# --platform=$BUILDPLATFORM: the dashboard is static JS/CSS, identical on every
+# architecture, so pull whichever variant the builder itself runs. Without this
+# a linux/arm64 build would demand an arm64 upstream image that may not exist.
+FROM --platform=$BUILDPLATFORM ${DASHBOARD_IMAGE} AS dashboard_src
 
 FROM python:$PYTHON_VERSION-slim-bookworm
 

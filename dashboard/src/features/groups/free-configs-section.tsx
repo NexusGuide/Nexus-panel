@@ -146,8 +146,13 @@ const FreeConfigsSection = forwardRef<FreeConfigsSectionHandle, FreeConfigsSecti
     return `${config.protocol} · ${trimmed}`
   }
 
+  // contain: inline-size means this box's width comes from its parent and its
+  // contents cannot push it wider. That, and w-0 on the name below, are what
+  // actually stop a sixty-character hostname from widening the whole dialog -
+  // confirmed by rebuilding the dialog's element chain and measuring it, after
+  // min-w-0 alone measurably did nothing.
   return (
-    <div className="w-full max-w-full min-w-0 space-y-2 overflow-hidden">
+    <div className="w-full max-w-full min-w-0 space-y-2 overflow-hidden" style={{ contain: 'inline-size' }}>
       <div className="flex items-center justify-between gap-2">
         <label className="shrink-0 text-sm font-medium">Free Configs</label>
         <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs text-muted-foreground">
@@ -204,7 +209,7 @@ const FreeConfigsSection = forwardRef<FreeConfigsSectionHandle, FreeConfigsSecti
                         chosen.includes(config.uri_hash) ? 'border-primary bg-primary' : 'border-muted',
                       )}
                     />
-                    <span className="min-w-0 flex-1 truncate break-all">{label(config)}</span>
+                    <span className="w-0 min-w-0 flex-1 truncate">{label(config)}</span>
                     <span className="max-w-[120px] shrink-0 truncate text-xs text-muted-foreground">
                       {config.address}
                     </span>
@@ -218,7 +223,7 @@ const FreeConfigsSection = forwardRef<FreeConfigsSectionHandle, FreeConfigsSecti
                 const config = configs.find(item => item.uri_hash === hash)
                 return (
                   <Badge key={hash} variant="secondary" className="flex max-w-full items-center gap-1 overflow-hidden">
-                    <span className="min-w-0 max-w-[180px] truncate">{config ? label(config) : hash.slice(0, 8)}</span>
+                    <span className="w-0 min-w-0 max-w-[180px] flex-1 truncate">{config ? label(config) : hash.slice(0, 8)}</span>
                     <X
                       className="h-3 w-3 cursor-pointer"
                       onClick={() => setChosen(current => current.filter(item => item !== hash))}

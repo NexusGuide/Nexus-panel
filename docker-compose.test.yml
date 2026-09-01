@@ -19,7 +19,12 @@ services:
     build: .
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      # Bound to loopback ON PURPOSE. This file enables DEBUG and an
+      # admin/admin login, so it must never be reachable from the internet.
+      # On a VPS, reach it over an SSH tunnel:
+      #     ssh -L 8000:127.0.0.1:8000 user@your-vps
+      # then open http://localhost:8000/docs on your own machine.
+      - "127.0.0.1:8000:8000"
     volumes:
       - pasarguard-test-data:/var/lib/pasarguard
     environment:

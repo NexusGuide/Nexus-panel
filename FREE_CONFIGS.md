@@ -64,7 +64,32 @@ sources (DB)  ──fetch──▶  parse & dedupe  ──TCP health check──
 
 ---
 
-## Setup
+## Install (one line)
+
+On a fresh VPS:
+
+```bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/Mezixa/pasarguard-free-configs/main/install.sh)"
+```
+
+That installs Docker if missing, pulls the prebuilt image, writes
+`/opt/pasarguard-free-configs`, starts the panel, seeds the community sources and
+runs the first refresh. Options: `--port`, `--listen`, `--no-seed`,
+`--no-free-configs`. Other subcommands: `update`, `uninstall`, `status`, `logs`,
+`seed`, `refresh`.
+
+The panel binds to `127.0.0.1` by default — put Nginx/Caddy in front for TLS, or
+reach it with `ssh -L 8000:127.0.0.1:8000 root@your-vps`.
+
+> The installer pulls `ghcr.io/mezixa/pasarguard-free-configs:latest`, published by
+> [`build-fork.yml`](.github/workflows/build-fork.yml) on every push to `main`.
+> **After the first CI run, make the GHCR package public** (repo → Packages →
+> Package settings → Change visibility), or the pull fails for everyone else.
+
+The rest of this section is the manual path, for development or when you want to
+run from source.
+
+## Setup (manual)
 
 ### 1. Migrate
 

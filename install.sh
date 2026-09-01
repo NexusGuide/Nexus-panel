@@ -82,29 +82,50 @@ apply_fork() {
 
     info "adding the free-configs settings to ${ENV_FILE} ..."
     touch "$ENV_FILE"
-    if grep -q "^FREE_CONFIGS_ENABLED" "$ENV_FILE"; then
-        sed -i -E "s|^FREE_CONFIGS_ENABLED=.*|FREE_CONFIGS_ENABLED=${ENABLE}|" "$ENV_FILE"
-    else
+
+    if ! grep -q "^# --- free configs add-on" "$ENV_FILE"; then
         cat >> "$ENV_FILE" <<EOF
 
 # --- free configs add-on (${REPO}) ----------------------------------------
 # Community proxy lists are harvested, TCP health-checked, and appended to the
 # subscription output of eligible users. See FREE_CONFIGS.md in the repo.
-FREE_CONFIGS_ENABLED=${ENABLE}
-# "all" = every user, "groups" = only members of opted-in groups
-FREE_CONFIGS_MODE=all
-FREE_CONFIGS_REFRESH_INTERVAL=86400
-# 0 = check every config found. Endpoints are probed once and the answer shared
-# by every config on them, so the whole pool is affordable; set a number here
-# only if a small VPS struggles.
-FREE_CONFIGS_MAX_CONFIGS=0
-# how many configs one server may contribute, and how many go in a subscription
-FREE_CONFIGS_MAX_PER_ENDPOINT=3
-FREE_CONFIGS_MAX_PER_SUBSCRIPTION=100
-FREE_CONFIGS_TCP_TIMEOUT=3
-FREE_CONFIGS_MAX_CONCURRENCY=50
 EOF
     fi
+
+    # Set each key on its own rather than writing the block once. The old
+    # version appended the whole block only when FREE_CONFIGS_ENABLED was
+    # absent, so an existing install never received a setting added in a later
+    # release - it kept running with a stale value and no sign of it.
+    # A value already in the file is left alone (it may be a deliberate choice)
+    # but is reported when it differs from what this version recommends.
+    set_env() {
+        local key="$1" value="$2" current
+        if grep -qE "^${key}=" "$ENV_FILE"; then
+            current="$(grep -E "^${key}=" "$ENV_FILE" | tail -1 | cut -d= -f2- | tr -d '"'"'"' ')"
+            if [ "$current" != "$value" ]; then
+                warn "${key} is ${current} in ${ENV_FILE}; this version suggests ${value} (left as-is)"
+            fi
+        else
+            printf '%s=%s\n' "$key" "$value" >> "$ENV_FILE"
+        fi
+    }
+
+    # the master switch is the one thing the flags own outright
+    if grep -qE "^FREE_CONFIGS_ENABLED=" "$ENV_FILE"; then
+        sed -i -E "s|^FREE_CONFIGS_ENABLED=.*|FREE_CONFIGS_ENABLED=${ENABLE}|" "$ENV_FILE"
+    else
+        printf 'FREE_CONFIGS_ENABLED=%s\n' "$ENABLE" >> "$ENV_FILE"
+    fi
+
+    set_env FREE_CONFIGS_MODE all
+    set_env FREE_CONFIGS_REFRESH_INTERVAL 86400
+    # 0 = check every config found. Endpoints are probed once and the answer is
+    # shared by every config on them, so the whole pool is affordable.
+    set_env FREE_CONFIGS_MAX_CONFIGS 0
+    set_env FREE_CONFIGS_MAX_PER_ENDPOINT 3
+    set_env FREE_CONFIGS_MAX_PER_SUBSCRIPTION 100
+    set_env FREE_CONFIGS_TCP_TIMEOUT 3
+    set_env FREE_CONFIGS_MAX_CONCURRENCY 50
 
     info "pulling and restarting ..."
     if docker image inspect "$IMAGE" >/dev/null 2>&1; then

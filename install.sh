@@ -1,101 +1,96 @@
 #!/usr/bin/env bash
 #
-# One-line installer for pasarguard-free-configs.
+# Installer for pasarguard-free-configs.
 #
-#   sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/Mezixa/pasarguard-free-configs/main/install.sh)"
+#   sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/Mezixa/pasarguard-free-configs/main/install.sh)" @ install
+#
+# This is deliberately a thin wrapper around PasarGuard's own installer rather
+# than a second installer. Theirs is ~1750 lines and already handles five
+# database backends, Let's Encrypt certificates (domain and IP), automatic
+# renewal, backup/restore, systemd, the CLI and TUI wrappers, and updates.
+# Reimplementing any of that would only add bugs.
+#
+# So: run the official installer, then change the two things that make this
+# fork this fork —
+#   1. point the compose file at the fork's image instead of pasarguard/panel
+#   2. add the FREE_CONFIGS_* settings to .env
+#
+# Every flag you pass to `install` goes straight through to the official
+# installer, so anything documented there works here:
+#
+#   ... @ install --database postgresql --ssl-domain panel.example.com
 #
 # Subcommands:
-#   install     install and start the panel (default)
-#   update      pull the newest image and restart
-#   uninstall   stop and remove the panel (asks before deleting data)
-#   status      show container status and free-configs pool stats
-#   logs        follow the logs
-#   seed        add the default community config sources
-#   refresh     rebuild the free-configs pool now
+#   install    official install, then apply this fork
+#   apply      re-apply the fork to an existing PasarGuard install
+#              (run this after an official update reverts the image)
+#   update     official update, then re-apply the fork
 #
-# Options for `install`:
-#   --port <n>        panel port (default 8000)
-#   --listen <addr>   bind address (default 127.0.0.1 - keep it behind a proxy)
-#   --no-seed         do not add the default sources
-#   --no-free-configs install plain upstream behaviour, feature disabled
-#   --build           build the image from source instead of pulling it
-#                     (happens automatically if the pull fails)
+# Anything else is handled by the official `pasarguard` command itself:
+#   pasarguard logs | restart | status | cli | backup | uninstall ...
+#
+# Fork-specific options:
+#   --image <ref>   use this image instead of the published one, e.g. a local
+#                   build:  --image pasarguard-free-configs:dev
+#   --no-seed       skip adding the default community sources
+#   --no-enable     install the fork's image but leave the feature switched off
 #
 set -euo pipefail
 
 REPO="Mezixa/pasarguard-free-configs"
 IMAGE="ghcr.io/mezixa/pasarguard-free-configs:latest"
-INSTALL_DIR="/opt/pasarguard-free-configs"
-DATA_DIR="/var/lib/pasarguard"
-COMPOSE="docker compose -f ${INSTALL_DIR}/docker-compose.yml"
+UPSTREAM_INSTALLER="https://github.com/PasarGuard/scripts/raw/main/pasarguard.sh"
 
-PORT=8000
-LISTEN="127.0.0.1"
+APP_NAME="pasarguard"
+APP_DIR="/opt/${APP_NAME}"
+COMPOSE_FILE="${APP_DIR}/docker-compose.yml"
+ENV_FILE="${APP_DIR}/.env"
+
 DO_SEED=1
-FREE_CONFIGS=true
-FROM_SOURCE=0
+ENABLE=true
 
 RED=$'\033[31m'; GREEN=$'\033[32m'; YELLOW=$'\033[33m'; BOLD=$'\033[1m'; RESET=$'\033[0m'
-info()  { echo "${GREEN}==>${RESET} $*"; }
-warn()  { echo "${YELLOW}==>${RESET} $*"; }
-die()   { echo "${RED}==> error:${RESET} $*" >&2; exit 1; }
+info() { echo "${GREEN}==>${RESET} $*"; }
+warn() { echo "${YELLOW}==>${RESET} $*"; }
+die()  { echo "${RED}==> error:${RESET} $*" >&2; exit 1; }
 
-require_root() {
-    [ "$(id -u)" -eq 0 ] || die "run this as root (use sudo)"
+require_root() { [ "$(id -u)" -eq 0 ] || die "run this as root (use sudo)"; }
+
+compose() { docker compose -f "$COMPOSE_FILE" "$@"; }
+
+run_upstream() {
+    # $1 = subcommand, rest = passthrough flags
+    local script
+    script="$(mktemp)"
+    info "fetching the official PasarGuard installer ..."
+    curl -fsSL "$UPSTREAM_INSTALLER" -o "$script" || die "could not download ${UPSTREAM_INSTALLER}"
+    chmod +x "$script"
+    info "running the official installer: $*"
+    bash "$script" "$@"
+    rm -f "$script"
 }
 
-install_docker() {
-    if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
-        info "docker is already installed"
-        return
+apply_fork() {
+    [ -f "$COMPOSE_FILE" ] || die "no PasarGuard install found at ${COMPOSE_FILE} - run \`install\` first"
+
+    info "pointing the compose file at ${IMAGE} ..."
+    # the official installer hardcodes pasarguard/panel:<version>
+    sed -i -E "s|^(\s*image:\s*).*pasarguard/panel:.*$|\1${IMAGE}|" "$COMPOSE_FILE"
+    if ! grep -q "$IMAGE" "$COMPOSE_FILE"; then
+        die "could not rewrite the image line in ${COMPOSE_FILE} - check it by hand"
     fi
-    info "installing docker ..."
-    curl -fsSL https://get.docker.com | sh
-    command -v docker >/dev/null 2>&1 || die "docker installation failed"
-    systemctl enable --now docker >/dev/null 2>&1 || true
-}
 
-write_compose() {
-    mkdir -p "$INSTALL_DIR" "$DATA_DIR"
-    cat > "${INSTALL_DIR}/docker-compose.yml" <<EOF
-services:
-  panel:
-    image: ${IMAGE}
-    container_name: pasarguard-free-configs
-    restart: always
-    # Host networking: matches upstream, and avoids the broken bridge-network
-    # DNS that many VPSes have (which would stop the config fetcher from
-    # reaching its sources). Exposure is controlled by UVICORN_HOST in .env.
-    network_mode: host
-    env_file: ${INSTALL_DIR}/.env
-    volumes:
-      - ${DATA_DIR}:/var/lib/pasarguard
-EOF
-}
+    info "adding the free-configs settings to ${ENV_FILE} ..."
+    touch "$ENV_FILE"
+    if grep -q "^FREE_CONFIGS_ENABLED" "$ENV_FILE"; then
+        sed -i -E "s|^FREE_CONFIGS_ENABLED=.*|FREE_CONFIGS_ENABLED=${ENABLE}|" "$ENV_FILE"
+    else
+        cat >> "$ENV_FILE" <<EOF
 
-write_env() {
-    if [ -f "${INSTALL_DIR}/.env" ]; then
-        info "keeping the existing .env"
-        return
-    fi
-    # Compose's env_file parser is not the dotenv parser the app uses for a
-    # local .env: it does not strip spaces around `=` and it keeps quotes as
-    # part of the value. So write plain KEY=value - upstream's .env.example
-    # style (`KEY = "value"`) is only correct when the app reads the file
-    # itself.
-    cat > "${INSTALL_DIR}/.env" <<EOF
-# --- panel ---------------------------------------------------------------
-SQLALCHEMY_DATABASE_URL=sqlite+aiosqlite:///${DATA_DIR}/db.sqlite3
-UVICORN_HOST=${LISTEN}
-UVICORN_PORT=${PORT}
-# Swagger at /docs and the OpenAPI schema. Handy for checking the API - and for
-# confirming the free-configs routes are registered. Set to false to hide them.
-DOCS=true
-
-# --- free configs add-on -------------------------------------------------
+# --- free configs add-on (${REPO}) ----------------------------------------
 # Community proxy lists are harvested, TCP health-checked, and appended to the
 # subscription output of eligible users. See FREE_CONFIGS.md in the repo.
-FREE_CONFIGS_ENABLED=${FREE_CONFIGS}
+FREE_CONFIGS_ENABLED=${ENABLE}
 # "all" = every user, "groups" = only members of opted-in groups
 FREE_CONFIGS_MODE=all
 FREE_CONFIGS_REFRESH_INTERVAL=86400
@@ -104,193 +99,111 @@ FREE_CONFIGS_MAX_CONFIGS=2000
 FREE_CONFIGS_TCP_TIMEOUT=3
 FREE_CONFIGS_MAX_CONCURRENCY=50
 EOF
-    chmod 600 "${INSTALL_DIR}/.env"
-}
-
-build_from_source() {
-    local src="${INSTALL_DIR}/src"
-    info "building the image from source (a few minutes on first run) ..."
-
-    if command -v git >/dev/null 2>&1; then
-        if [ -d "${src}/.git" ]; then
-            git -C "$src" fetch --depth 1 origin main && git -C "$src" reset --hard origin/main
-        else
-            rm -rf "$src"
-            git clone --depth 1 "https://github.com/${REPO}.git" "$src"
-        fi
-    else
-        info "git is missing, downloading a source tarball instead ..."
-        rm -rf "$src" && mkdir -p "$src"
-        curl -fsSL "https://github.com/${REPO}/archive/refs/heads/main.tar.gz" \
-            | tar -xz -C "$src" --strip-components=1
     fi
 
-    # --network=host: Docker's bridge network cannot resolve DNS on many VPSes,
-    # which makes apt-get inside the build fail with "Temporary failure resolving".
-    docker build --network=host -t "$IMAGE" "$src" \
-        || die "the build failed. Check the output above; if it stopped at apt-get, it is a DNS problem in Docker - see FREE_CONFIGS.md."
+    info "pulling and restarting ..."
+    if ! compose pull; then
+        warn "could not pull ${IMAGE}"
+        warn "if the GHCR package is still private, make it public:"
+        warn "  https://github.com/${REPO} -> Packages -> Package settings -> Change visibility"
+        warn "or build it yourself and re-run with --image <your-tag>:"
+        warn "  git clone https://github.com/${REPO}.git && cd pasarguard-free-configs"
+        warn "  docker build --network=host -t ${IMAGE} ."
+        die "aborting before restarting, so your panel keeps running on its current image"
+    fi
+    compose up -d
 
-    warn "built without the compiled dashboard, so the web UI is not served."
-    warn "the API and the free-configs feature work normally; publish the CI image for the full UI."
-}
-
-wait_for_health() {
-    info "waiting for the panel to come up ..."
-    for _ in $(seq 1 60); do
-        if curl -fsS "http://127.0.0.1:${PORT}/health" >/dev/null 2>&1; then
-            info "panel is up"
-            return 0
-        fi
+    info "waiting for the panel ..."
+    for _ in $(seq 1 45); do
+        compose exec -T "$(compose config --services | head -1)" true >/dev/null 2>&1 && break
         sleep 2
     done
-    warn "the panel did not answer /health in time - check: ${BOLD}$0 logs${RESET}"
-    return 1
 }
 
-cmd_seed() {
+seed_and_refresh() {
+    local svc
+    svc="$(compose config --services | head -1)"
+
     info "adding the default community sources ..."
-    $COMPOSE exec -T panel python scripts/seed_free_configs.py || \
-        warn "seeding failed - add sources yourself via POST /api/free-configs/sources"
+    compose exec -T "$svc" python scripts/seed_free_configs.py \
+        || { warn "seeding failed - add sources via POST /api/free-configs/sources"; return; }
+
+    info "building the pool for the first time (fetches and health-checks; takes a while) ..."
+    compose exec -T "$svc" python -c \
+        "import asyncio, json; from app.free_configs.service import refresh_pool; print(json.dumps(asyncio.run(refresh_pool()), indent=2))" \
+        || warn "the first refresh did not finish - the scheduled job will retry"
 }
 
-cmd_refresh() {
-    info "rebuilding the free-configs pool (this fetches and health-checks, it takes a while) ..."
-    $COMPOSE exec -T panel python -c \
-        "import asyncio, json; from app.free_configs.service import refresh_pool; print(json.dumps(asyncio.run(refresh_pool()), indent=2))"
-}
-
-cmd_install() {
-    require_root
-    install_docker
-    write_compose
-    write_env
-
-    if [ "$FROM_SOURCE" -eq 1 ]; then
-        build_from_source
-    else
-        info "pulling ${IMAGE} ..."
-        if ! $COMPOSE pull 2>&1; then
-            warn "could not pull ${IMAGE}"
-            warn "the GHCR package is probably still private or not published yet:"
-            warn "  https://github.com/${REPO} -> Packages -> Package settings -> Change visibility"
-            warn "falling back to building from source ..."
-            build_from_source
-        fi
-    fi
-
-    info "starting ..."
-    $COMPOSE up -d
-    wait_for_health || true
-
-    if [ "$DO_SEED" -eq 1 ] && [ "$FREE_CONFIGS" = "true" ]; then
-        cmd_seed
-        # Judge the refresh by what landed in the pool, not by the exit code:
-        # `docker compose exec` can return non-zero for unrelated reasons (an
-        # orphan container from an older stack, for one) even when the refresh
-        # itself finished fine.
-        cmd_refresh || true
-        if $COMPOSE exec -T panel python -c \
-            "import asyncio; from app.db import GetDB; from app.free_configs import crud
-async def m():
-    async with GetDB() as db:
-        s = await crud.get_pool_stats(db)
-        raise SystemExit(0 if s['healthy'] else 1)
-asyncio.run(m())" 2>/dev/null
-        then
-            info "the pool is populated"
-        else
-            warn "the pool is still empty - the scheduled job will retry, or run: $0 refresh"
-        fi
-    fi
-
+summary() {
     cat <<EOF
 
-${GREEN}${BOLD}Installed.${RESET}
+${GREEN}${BOLD}Done.${RESET} PasarGuard is installed by its own installer and now runs this fork.
 
-  panel      http://${LISTEN}:${PORT}
-  files      ${INSTALL_DIR}
-  data       ${DATA_DIR}
-
-${BOLD}Next: create the owner admin${RESET}
-
-  ${COMPOSE} exec panel pasarguard-cli generate-temp-key
-
-  Then open the setup page with that key to create your first admin.
-
-${BOLD}The panel listens on ${LISTEN} only.${RESET}
-  To reach it from your own machine:   ssh -L ${PORT}:127.0.0.1:${PORT} root@<this-server>
-  For real use, put Nginx or Caddy in front with a TLS certificate, or set
-  UVICORN_SSL_CERTFILE / UVICORN_SSL_KEYFILE in ${INSTALL_DIR}/.env.
+  image     ${IMAGE}
+  files     ${APP_DIR}
+  manage    ${BOLD}pasarguard${RESET} logs | restart | status | cli | backup | uninstall
 
 ${BOLD}Free configs${RESET}
-  status    $0 status
+  settings  ${ENV_FILE}  (FREE_CONFIGS_*)
+  API       /api/free-configs/...   (owner only)
   refresh   $0 refresh
-  These are third-party servers, health-checked from THIS machine only. Free,
-  best-effort, no guarantees - do not sell them as a metered service.
+
+${BOLD}Note${RESET}
+  An official \`pasarguard update\` resets the image back to upstream.
+  Run ${BOLD}$0 update${RESET} instead, or ${BOLD}$0 apply${RESET} afterwards.
+
+  These are third-party servers, health-checked from this machine only. Free
+  and best-effort, with no guarantees - do not sell them as a metered service.
 EOF
 }
 
-cmd_update() {
-    require_root
-    info "pulling the newest image ..."
-    $COMPOSE pull
-    $COMPOSE up -d
-    wait_for_health || true
-    info "updated"
+cmd_refresh() {
+    local svc
+    svc="$(compose config --services | head -1)"
+    compose exec -T "$svc" python -c \
+        "import asyncio, json; from app.free_configs.service import refresh_pool; print(json.dumps(asyncio.run(refresh_pool()), indent=2))"
 }
-
-cmd_uninstall() {
-    require_root
-    $COMPOSE down || true
-    read -r -p "Delete the database and config pool in ${DATA_DIR}? [y/N] " reply
-    if [[ "$reply" =~ ^[Yy]$ ]]; then
-        rm -rf "$DATA_DIR"
-        info "data removed"
-    else
-        info "data kept in ${DATA_DIR}"
-    fi
-    rm -rf "$INSTALL_DIR"
-    info "uninstalled"
-}
-
-cmd_status() {
-    $COMPOSE ps
-    echo
-    $COMPOSE exec -T panel python scripts/seed_free_configs.py --list 2>/dev/null \
-        || warn "could not read the pool (is the panel running?)"
-}
-
-cmd_logs() { $COMPOSE logs -f --tail 100; }
 
 main() {
-    # `install` is the default action, so options may come first:
-    #   install.sh --port 9000     ==  install.sh install --port 9000
     local action="install"
     if [ $# -gt 0 ] && [[ "$1" != --* ]]; then
-        action="$1"
-        shift
+        action="$1"; shift
     fi
 
+    # pull out our own flags, keep the rest for the official installer
+    local passthrough=()
     while [ $# -gt 0 ]; do
         case "$1" in
-            --port)   PORT="$2"; shift 2 ;;
-            --listen) LISTEN="$2"; shift 2 ;;
-            --no-seed) DO_SEED=0; shift ;;
-            --no-free-configs) FREE_CONFIGS=false; shift ;;
-            --build) FROM_SOURCE=1; shift ;;
-            *) die "unknown option: $1" ;;
+            --image)     IMAGE="$2"; shift 2 ;;
+            --no-seed)   DO_SEED=0; shift ;;
+            --no-enable) ENABLE=false; shift ;;
+            *)           passthrough+=("$1"); shift ;;
         esac
     done
 
     case "$action" in
-        install)   cmd_install ;;
-        update)    cmd_update ;;
-        uninstall) cmd_uninstall ;;
-        status)    cmd_status ;;
-        logs)      cmd_logs ;;
-        seed)      cmd_seed ;;
-        refresh)   cmd_refresh ;;
-        *) die "unknown command: ${action} (install|update|uninstall|status|logs|seed|refresh)" ;;
+        install)
+            require_root
+            run_upstream install "${passthrough[@]+"${passthrough[@]}"}"
+            apply_fork
+            [ "$DO_SEED" -eq 1 ] && [ "$ENABLE" = "true" ] && seed_and_refresh
+            summary
+            ;;
+        apply)
+            require_root
+            apply_fork
+            summary
+            ;;
+        update)
+            require_root
+            run_upstream update "${passthrough[@]+"${passthrough[@]}"}"
+            apply_fork
+            summary
+            ;;
+        refresh) cmd_refresh ;;
+        *) die "unknown command: ${action}
+Use: install | apply | update | refresh
+Everything else is the official command: pasarguard logs | restart | status | cli | backup | uninstall" ;;
     esac
 }
 

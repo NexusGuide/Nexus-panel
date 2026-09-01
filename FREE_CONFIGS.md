@@ -64,32 +64,63 @@ sources (DB)  ──fetch──▶  parse & dedupe  ──TCP health check──
 
 ---
 
-## Install (one line)
+## Install
 
 On a fresh VPS:
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/Mezixa/pasarguard-free-configs/main/install.sh)"
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/Mezixa/pasarguard-free-configs/main/install.sh)" @ install
 ```
 
-That installs Docker if missing, pulls the prebuilt image, writes
-`/opt/pasarguard-free-configs`, starts the panel, seeds the community sources and
-runs the first refresh. Options: `--port`, `--listen`, `--no-seed`,
-`--no-free-configs`. Other subcommands: `update`, `uninstall`, `status`, `logs`,
-`seed`, `refresh`.
+This is a thin wrapper around **PasarGuard's own installer**, not a second one.
+Theirs already handles five database backends, Let's Encrypt certificates (by
+domain or by IP), automatic renewal, backup/restore, systemd, the CLI and TUI,
+and updates — roughly 1,750 lines of it. Reimplementing any of that would only
+add bugs. So the wrapper runs the official installer and then changes the two
+things that make this a fork:
 
-The panel binds to `127.0.0.1` by default — put Nginx/Caddy in front for TLS, or
-reach it with `ssh -L 8000:127.0.0.1:8000 root@your-vps`.
+1. points `/opt/pasarguard/docker-compose.yml` at this fork's image
+2. adds the `FREE_CONFIGS_*` settings to `/opt/pasarguard/.env`
 
-> The installer pulls `ghcr.io/mezixa/pasarguard-free-configs:latest`, published by
+Every flag goes straight through to the official installer, so anything
+documented there works:
+
+```bash
+... @ install --database postgresql --ssl-domain panel.example.com
+```
+
+Fork-specific flags: `--image <ref>` (use a different or locally built image),
+`--no-seed`, `--no-enable`.
+
+Day-to-day management is the official command — `pasarguard logs | restart |
+status | cli | backup | uninstall`. Only these are the wrapper's:
+
+| Command | Purpose |
+| --- | --- |
+| `install` | official install, then apply the fork |
+| `apply` | re-apply the fork to an existing install |
+| `update` | official update, then re-apply the fork |
+| `refresh` | rebuild the free-configs pool now |
+
+> **An official `pasarguard update` resets the image back to upstream**, since
+> the version is hardcoded there. Use `install.sh update`, or run
+> `install.sh apply` afterwards.
+
+> The image is `ghcr.io/mezixa/pasarguard-free-configs:latest`, published by
 > [`build-fork.yml`](.github/workflows/build-fork.yml) on every push to `main`.
 > **After the first CI run, make the GHCR package public** (repo → Packages →
 > Package settings → Change visibility), or the pull fails for everyone else.
+> Until then, build it yourself and pass `--image`:
+> ```bash
+> git clone https://github.com/Mezixa/pasarguard-free-configs.git
+> cd pasarguard-free-configs
+> docker build --network=host -t pasarguard-free-configs:dev .
+> sudo bash install.sh install --image pasarguard-free-configs:dev
+> ```
+> (`--network=host` because Docker's bridge network cannot resolve DNS on many
+> VPSes, which makes `apt-get` inside the build fail.)
 
-The rest of this section is the manual path, for development or when you want to
-run from source.
-
-## Setup (manual)
+## Running from source (development)
 
 ### 1. Migrate
 
@@ -196,6 +227,8 @@ app/routers/free_configs.py
 app/db/migrations/versions/9f2c1a7b4e05_add_free_configs_tables.py
 scripts/seed_free_configs.py
 tests/test_free_configs_parser.py
+install.sh
+.github/workflows/build-fork.yml
 FREE_CONFIGS.md
 ```
 
@@ -211,63 +244,6 @@ stays cheap:
 
 The models live in `app/free_configs/models.py` and register themselves on the shared
 `Base.metadata`, so `app/db/models.py` is untouched.
-
-## Testing the fork end to end
-
-The repo's main `docker-compose.yml` pulls the **published upstream image**, so it will
-not run this fork's code. Use the test compose file, which builds from source:
-
-```bash
-docker compose -f docker-compose.test.yml up --build
-```
-
-Watch the startup log for the migration:
-
-```
-INFO  [alembic.runtime.migration] Running upgrade 7c4bd5128e62 -> 9f2c1a7b4e05, add free configs tables
-```
-
-Then, in a second terminal, exercise the feature without needing to log in — the seed
-script and the refresh both run directly against the service layer:
-
-```bash
-# 1. add the community source lists
-docker compose -f docker-compose.test.yml exec panel python scripts/seed_free_configs.py
-
-# 2. run one full refresh: fetch -> parse -> dedupe -> TCP health check -> store
-docker compose -f docker-compose.test.yml exec panel python -c "
-import asyncio, json
-from app.free_configs.service import refresh_pool
-print(json.dumps(asyncio.run(refresh_pool()), indent=2))
-"
-
-# 3. see what landed in the pool
-docker compose -f docker-compose.test.yml exec panel python scripts/seed_free_configs.py --list
-```
-
-A healthy run prints something like:
-
-```json
-{
-  "sources": 10,
-  "fetched": 4831,
-  "unique": 3902,
-  "healthy": 271,
-  "duration_seconds": 44.6,
-  "errors": []
-}
-```
-
-`errors` lists any source that failed to download — a dead source is expected from time
-to time and does not fail the run.
-
-To check the API surface, open <http://localhost:8000/docs> and look for the
-**FreeConfigs** tag, or log in with `admin` / `admin` (only works because the test
-compose sets `DEBUG=true`) and call `GET /api/free-configs/status`.
-
-Finally, confirm the configs actually reach a subscription: create a user in the panel,
-open their subscription URL, and the free entries appear at the end of the list with the
-`🆓` prefix. Remember this only applies to the `links` / `links_base64` formats.
 
 ## Tests
 

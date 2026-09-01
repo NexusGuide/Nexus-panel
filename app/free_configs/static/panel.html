@@ -110,7 +110,7 @@
     <table>
       <thead><tr>
         <th style="width:28px"><input type="checkbox" id="selall"></th>
-        <th>On</th><th>Protocol</th><th>Address</th><th>Port</th>
+        <th>On</th><th>Protocol</th><th>Address</th><th>SNI / Host</th><th>Port</th>
         <th>Latency</th><th>State</th><th>Name</th><th>URI</th><th></th>
       </tr></thead>
       <tbody id="rows"></tbody>
@@ -207,6 +207,21 @@
 
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+  // Behind a CDN every config shares one address, so the address column alone
+  // cannot tell two servers apart - the TLS server name is what does. Read it
+  // out of the URI here rather than storing it: it is already in the string.
+  function sniOf(uri) {
+    try {
+      if (uri.startsWith('vmess://')) {
+        const b64 = uri.slice(8).replace(/-/g, '+').replace(/_/g, '/');
+        const json = JSON.parse(atob(b64 + '='.repeat((4 - b64.length % 4) % 4)));
+        return json.sni || json.host || '';
+      }
+      const q = new URLSearchParams((uri.split('?')[1] || '').split('#')[0]);
+      return q.get('sni') || q.get('host') || q.get('peer') || q.get('servername') || '';
+    } catch { return ''; }
+  }
+
   // ---------------------------------------------------------------- stats
 
   async function loadStatus() {
@@ -231,7 +246,7 @@
   function renderRows(items) {
     const rows = document.getElementById('rows');
     if (!items.length) {
-      rows.innerHTML = `<tr><td colspan="10" class="empty">Nothing here yet. Add a source, then rebuild the pool.</td></tr>`;
+      rows.innerHTML = `<tr><td colspan="11" class="empty">Nothing here yet. Add a source, then rebuild the pool.</td></tr>`;
       return;
     }
     rows.innerHTML = items.map(c => `
@@ -240,6 +255,7 @@
         <td><input type="checkbox" class="tog" data-hash="${esc(c.uri_hash)}" ${c.is_enabled ? 'checked' : ''}></td>
         <td>${esc(c.protocol)}</td>
         <td>${esc(c.address)}</td>
+        <td title="${esc(sniOf(c.uri))}">${sniOf(c.uri) ? esc(sniOf(c.uri)) : '<span class="muted">-</span>'}</td>
         <td>${esc(c.port)}</td>
         <td>${c.latency_ms == null ? '<span class="muted">-</span>' : esc(c.latency_ms) + ' ms'}</td>
         <td>
@@ -540,7 +556,7 @@
       await loadPool();
     } catch (err) {
       document.getElementById('rows').innerHTML =
-        `<tr><td colspan="10" class="empty">${esc(err.message)}</td></tr>`;
+        `<tr><td colspan="11" class="empty">${esc(err.message)}</td></tr>`;
       toast(err.message);
     }
   })();

@@ -8,7 +8,7 @@ import binascii
 import hashlib
 import json
 from dataclasses import dataclass
-from urllib.parse import quote, unquote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
 SUPPORTED_SCHEMES = (
     "vmess://",
@@ -53,6 +53,20 @@ class ParsedConfig:
     protocol: str
     address: str
     port: int
+    # The TLS server name (sni, or the ws/http Host header when there is no
+    # sni). Behind a CDN this - not the IP - is what identifies the server:
+    # dozens of unrelated proxies answer on one Cloudflare address and are told
+    # apart only by this. Empty when the config carries neither.
+    sni: str = ""
+
+    @property
+    def endpoint_key(self) -> tuple[str, int, str]:
+        """What counts as "the same server" when limiting configs per server.
+
+        Keying on (address, port) alone collapsed an entire CDN-fronted list
+        into one entry, because every config in it shares one Cloudflare IP.
+        """
+        return (self.address, self.port, self.sni)
 
     @property
     def uri_hash(self) -> str:
@@ -119,7 +133,8 @@ def _parse_vmess(uri: str) -> ParsedConfig | None:
     port = int(payload.get("port") or 0)
     if not address or not (0 < port < 65536):
         return None
-    return ParsedConfig(uri=uri, protocol="vmess", address=address, port=port)
+    sni = str(payload.get("sni") or payload.get("host") or "").strip().lower()
+    return ParsedConfig(uri=uri, protocol="vmess", address=address, port=port, sni=sni)
 
 
 def _parse_shadowsocks(uri: str) -> ParsedConfig | None:
@@ -154,7 +169,19 @@ def _parse_generic(uri: str) -> ParsedConfig | None:
     protocol = parsed.scheme.lower()
     if protocol in ("hy2", "hysteria2"):
         protocol = "hysteria2"
-    return ParsedConfig(uri=uri, protocol=protocol, address=parsed.hostname, port=port)
+    query = parse_qs(parsed.query)
+
+    def first(*names: str) -> str:
+        for name in names:
+            values = query.get(name)
+            if values and values[0].strip():
+                return values[0].strip().lower()
+        return ""
+
+    # reality uses sni; ws/httpupgrade fall back to the Host header; some lists
+    # only carry peer= (trojan's older spelling)
+    sni = first("sni", "host", "peer", "servername")
+    return ParsedConfig(uri=uri, protocol=protocol, address=parsed.hostname, port=port, sni=sni)
 
 
 def label_uri(uri: str, prefix: str, remark_override: str | None = None) -> str:

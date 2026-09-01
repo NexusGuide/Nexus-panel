@@ -105,12 +105,17 @@ async def replace_configs(db: AsyncSession, results: list[HealthResult], source_
 
     # One server often carries dozens of near-identical configs. Serving all of
     # them pads a subscription with entries that all fail together when that
-    # server goes down, so keep only a few per endpoint - different credentials
-    # or transports on the same host are worth a couple of tries, not thirty.
+    # server goes down, so keep only a few per server - different credentials or
+    # transports on the same host are worth a couple of tries, not thirty.
+    #
+    # "Same server" is (address, port, sni), not (address, port). Behind a CDN
+    # the address is shared: an entire curated list can sit on one Cloudflare IP,
+    # and keying on the address alone threw away all but three of them. What
+    # actually distinguishes those proxies is the TLS server name.
     per_endpoint = (await get_settings()).max_per_endpoint
     if per_endpoint > 0:
         kept: list[HealthResult] = []
-        seen: dict[tuple[str, int], int] = {}
+        seen: dict[tuple[str, int, str], int] = {}
         for result in results:
             # a hand-added config is never squeezed out by the cap
             if result.config.uri_hash in manual_hashes:
@@ -118,7 +123,7 @@ async def replace_configs(db: AsyncSession, results: list[HealthResult], source_
                 continue
             if not result.is_healthy:
                 continue
-            key = (result.config.address, result.config.port)
+            key = result.config.endpoint_key
             if seen.get(key, 0) >= per_endpoint:
                 continue
             seen[key] = seen.get(key, 0) + 1

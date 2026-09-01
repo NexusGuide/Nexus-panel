@@ -281,6 +281,17 @@ main() {
     case "$action" in
         install)
             require_root
+            # The official installer refuses to run over an existing install
+            # unless you agree to wipe it. Someone who already runs PasarGuard
+            # and wants the fork almost never means that - they want `apply`.
+            # Say so here rather than letting them find out at a y/n prompt
+            # whose "yes" destroys a working panel.
+            if [ -f "$COMPOSE_FILE" ]; then
+                warn "PasarGuard is already installed at ${APP_DIR}."
+                warn "To add this fork to it without touching your data, run:"
+                warn "    $0 apply"
+                die "not running the official installer over an existing install"
+            fi
             run_upstream install "${passthrough[@]+"${passthrough[@]}"}"
             apply_fork
             [ "$DO_SEED" -eq 1 ] && [ "$ENABLE" = "true" ] && seed_and_refresh

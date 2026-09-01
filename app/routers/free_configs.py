@@ -8,22 +8,28 @@ keeping the diff against upstream small.
 
 import asyncio
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.db import AsyncSession, get_db
-from app.free_configs import crud, service
+from app.free_configs import crud, service, settings as settings_module
+from app.free_configs.parser import parse_uri
 from app.free_configs.schemas import (
+    BulkOverrideUpdate,
+    FreeConfigOverrideUpdate,
+    FreeConfigPage,
     FreeConfigResponse,
+    FreeConfigSettingsResponse,
+    FreeConfigSettingsUpdate,
     FreeConfigsStatus,
     FreeConfigSourceCreate,
     FreeConfigSourceModify,
     FreeConfigSourceResponse,
-    GroupAccessResponse,
-    GroupAccessUpdate,
+    ManualConfigCreate,
 )
+from app.free_configs.schemas import GroupAccessResponse, GroupAccessUpdate
 from app.models.admin import AdminDetails
 from app.utils import responses
-from config import free_configs_settings
+from config import free_configs_settings as env_settings
 
 from .authentication import require_owner
 
@@ -100,29 +106,170 @@ async def get_status(db: AsyncSession = Depends(get_db), _: AdminDetails = Depen
     """Feature settings, last refresh result, and current pool size."""
     pool = await crud.get_pool_stats(db)
     info = service.last_refresh_info()
+    effective = await settings_module.get_settings()
     return FreeConfigsStatus(
-        enabled=free_configs_settings.enabled,
-        mode=free_configs_settings.mode,
-        refresh_interval=free_configs_settings.refresh_interval,
-        health_check=free_configs_settings.health_check,
+        enabled=effective.enabled,
+        mode=effective.mode,
+        refresh_interval=effective.refresh_interval,
+        health_check=effective.health_check,
         running=info["running"],
         last_refresh_at=info["last_refresh_at"],
         last_stats=info["last_stats"],
         pool_total=pool["total"],
         pool_healthy=pool["healthy"],
+        pool_disabled=pool["disabled"],
+        pool_manual=pool["manual"],
         pool_last_checked_at=pool["last_checked_at"],
     )
 
 
-@router.get("/configs", response_model=list[FreeConfigResponse])
+def _to_response(config, override) -> FreeConfigResponse:
+    return FreeConfigResponse(
+        id=config.id,
+        uri=config.uri,
+        uri_hash=config.uri_hash,
+        protocol=config.protocol,
+        address=config.address,
+        port=config.port,
+        is_healthy=config.is_healthy,
+        is_enabled=config.is_enabled,
+        is_manual=config.is_manual,
+        remark=override.remark if override else None,
+        note=override.note if override else None,
+        latency_ms=config.latency_ms,
+        last_checked_at=config.last_checked_at,
+    )
+
+
+@router.get("/configs", response_model=FreeConfigPage)
 async def list_configs(
-    healthy_only: bool = True,
-    limit: int = 100,
+    search: str | None = None,
+    protocol: str | None = None,
+    status_filter: str = Query(default="all", alias="status", pattern="^(all|enabled|disabled|manual|unhealthy)$"),
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
     _: AdminDetails = Depends(require_owner),
 ):
-    """Inspect the current pool (newest refresh), fastest endpoints first."""
-    return await crud.get_configs(db, healthy_only=healthy_only, limit=limit)
+    """A page of the pool, fastest first, with each config's admin override."""
+    rows, total = await crud.get_configs_page(
+        db, search=search, protocol=protocol, status=status_filter, offset=offset, limit=limit
+    )
+    return FreeConfigPage(
+        items=[_to_response(config, override) for config, override in rows],
+        total=total,
+        offset=offset,
+        limit=limit,
+        protocols=await crud.get_protocols(db),
+    )
+
+
+@router.put("/configs/{uri_hash}", response_model=FreeConfigResponse)
+async def update_config(
+    uri_hash: str,
+    payload: FreeConfigOverrideUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: AdminDetails = Depends(require_owner),
+):
+    """Switch one config off or on, rename it, or attach a note.
+
+    Stored against the config's content hash rather than its row id, so the
+    decision survives the next refresh - which replaces the pool wholesale.
+    """
+    await crud.set_override(
+        db, uri_hash, is_enabled=payload.is_enabled, remark=payload.remark, note=payload.note
+    )
+    await service.invalidate_pool_cache()
+
+    override = await crud.get_override(db, uri_hash)
+    config = await crud.get_config_by_hash(db, uri_hash)
+    if config is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No config with that hash in the pool")
+    return _to_response(config, override)
+
+
+@router.post("/configs/bulk", status_code=status.HTTP_200_OK)
+async def bulk_update_configs(
+    payload: BulkOverrideUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: AdminDetails = Depends(require_owner),
+):
+    """Switch many configs on or off at once."""
+    changed = await crud.set_overrides_bulk(db, payload.uri_hashes, payload.is_enabled)
+    await service.invalidate_pool_cache()
+    return {"changed": changed}
+
+
+@router.post("/configs/manual", response_model=FreeConfigResponse, status_code=status.HTTP_201_CREATED)
+async def add_manual_config(
+    payload: ManualConfigCreate,
+    db: AsyncSession = Depends(get_db),
+    _: AdminDetails = Depends(require_owner),
+):
+    """Add a config by hand. It is kept across refreshes and never capped out."""
+    parsed = parse_uri(payload.uri)
+    if parsed is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Could not parse that URI - check the scheme, host and port",
+        )
+    config = await crud.upsert_manual_config(db, parsed, remark=payload.remark)
+    await service.invalidate_pool_cache()
+    return _to_response(config, await crud.get_override(db, parsed.uri_hash))
+
+
+@router.delete("/configs/{uri_hash}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_override(
+    uri_hash: str,
+    db: AsyncSession = Depends(get_db),
+    _: AdminDetails = Depends(require_owner),
+):
+    """Forget an override. A manual config is removed; a harvested one is re-enabled."""
+    if not await crud.clear_override(db, uri_hash):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No override for that hash")
+    await service.invalidate_pool_cache()
+
+
+# --------------------------------------------------------------------------- #
+# settings
+# --------------------------------------------------------------------------- #
+
+
+@router.get("/settings", response_model=FreeConfigSettingsResponse)
+async def get_settings(db: AsyncSession = Depends(get_db), _: AdminDetails = Depends(require_owner)):
+    """Effective settings, what is stored, and what .env would give on its own."""
+    stored = await settings_module.read_row(db)
+    effective = await settings_module.get_settings()
+    return FreeConfigSettingsResponse(
+        effective=effective.__dict__,
+        stored={**stored["stored"], "disabled": stored["disabled"]},
+        defaults=stored["defaults"],
+        env_enabled=env_settings.enabled,
+    )
+
+
+@router.put("/settings", response_model=FreeConfigSettingsResponse)
+async def update_settings(
+    payload: FreeConfigSettingsUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: AdminDetails = Depends(require_owner),
+):
+    """Save settings. A field sent as null goes back to its .env default.
+
+    ``FREE_CONFIGS_ENABLED`` is not here: the panel can switch the feature off
+    but never on, so an install that never opted in cannot be enabled from a
+    web form.
+    """
+    await settings_module.update_settings(db, payload.model_dump(exclude_unset=True))
+    await service.invalidate_pool_cache()
+    stored = await settings_module.read_row(db)
+    effective = await settings_module.get_settings()
+    return FreeConfigSettingsResponse(
+        effective=effective.__dict__,
+        stored={**stored["stored"], "disabled": stored["disabled"]},
+        defaults=stored["defaults"],
+        env_enabled=env_settings.enabled,
+    )
 
 
 @router.post("/refresh", status_code=status.HTTP_202_ACCEPTED)

@@ -13,9 +13,9 @@ from aiocache import cached
 from app.db import GetDB
 from app.free_configs import crud
 from app.free_configs.fetcher import HealthResult, iter_checked_batches, iter_fetched_sources
-from app.free_configs.parser import ParsedConfig, label_uri
+from app.free_configs.parser import ParsedConfig, label_uri, parse_uri
+from app.free_configs.settings import get_settings
 from app.utils.logger import get_logger
-from config import free_configs_settings
 
 logger = get_logger("free-configs")
 
@@ -79,8 +79,20 @@ async def refresh_pool() -> dict:
 
             candidates = list(unique.values())
             unique.clear()
-            if free_configs_settings.max_configs > 0:
-                candidates = candidates[: free_configs_settings.max_configs]
+            settings = await get_settings()
+            if settings.max_configs > 0:
+                candidates = candidates[: settings.max_configs]
+
+            # Hand-added configs join the candidate list so they get a health
+            # check like everything else; replace_configs keeps them whatever
+            # the answer is.
+            async with GetDB() as db:
+                manual = await crud.get_manual_overrides(db)
+            for row in manual:
+                parsed = parse_uri(row.uri)
+                if parsed is not None and parsed.uri_hash not in origin:
+                    origin[parsed.uri_hash] = None
+                    candidates.append(parsed)
 
             logger.info(
                 "free-configs: %d fetched, %d unique, health-checking %d",
@@ -141,9 +153,15 @@ def last_refresh_info() -> dict:
 async def _cached_pool() -> list[str]:
     """Healthy URIs, labelled, ready to append to a subscription."""
     async with GetDB() as db:
-        uris = await crud.get_healthy_configs(db, limit=free_configs_settings.max_per_subscription)
-    prefix = free_configs_settings.remark_prefix
-    return [label_uri(uri, prefix) for uri in uris]
+        settings = await get_settings()
+        pairs = await crud.get_healthy_configs(db, limit=settings.max_per_subscription)
+    prefix = settings.remark_prefix
+    return [label_uri(uri, prefix, remark_override=remark) for uri, remark in pairs]
+
+
+async def invalidate_pool_cache() -> None:
+    """Public entry point for the API: an override or setting just changed."""
+    await _clear_pool_cache()
 
 
 async def _clear_pool_cache() -> None:
@@ -170,9 +188,10 @@ async def invalidate_access_cache() -> None:
 
 async def user_is_eligible(user_id: int) -> bool:
     """Decide whether this user should receive free configs."""
-    if not free_configs_settings.enabled:
+    settings = await get_settings()
+    if not settings.enabled:
         return False
-    if free_configs_settings.mode == "all":
+    if settings.mode == "all":
         return True
     if not await _cached_group_mode_enabled():
         return False

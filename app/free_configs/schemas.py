@@ -44,14 +44,90 @@ class FreeConfigSourceResponse(BaseModel):
 class FreeConfigResponse(BaseModel):
     id: int
     uri: str
+    uri_hash: str
     protocol: str
     address: str
     port: int
     is_healthy: bool
+    is_enabled: bool = True
+    is_manual: bool = False
+    remark: str | None = None
+    note: str | None = None
     latency_ms: int | None = None
     last_checked_at: dt | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class FreeConfigPage(BaseModel):
+    """One page of the pool, for the admin UI's table."""
+
+    items: list[FreeConfigResponse] = Field(default_factory=list)
+    total: int = 0
+    offset: int = 0
+    limit: int = 50
+    protocols: list[str] = Field(default_factory=list)
+
+
+class FreeConfigOverrideUpdate(BaseModel):
+    """The admin's decision about one config. Omitted fields are left alone."""
+
+    is_enabled: bool | None = None
+    remark: str | None = Field(default=None, max_length=256)
+    note: str | None = Field(default=None, max_length=512)
+
+
+class BulkOverrideUpdate(BaseModel):
+    uri_hashes: list[str] = Field(default_factory=list, max_length=1000)
+    is_enabled: bool
+
+
+class ManualConfigCreate(BaseModel):
+    uri: str = Field(max_length=8192, description="a full proxy URI, e.g. vless://...")
+    remark: str | None = Field(default=None, max_length=256)
+
+    @field_validator("uri", mode="after")
+    @classmethod
+    def validate_uri(cls, value: str) -> str:
+        value = value.strip()
+        if not value.startswith(SUPPORTED_SCHEMES):
+            raise ValueError(f"uri must start with one of: {', '.join(SUPPORTED_SCHEMES)}")
+        return value
+
+
+class FreeConfigSettingsUpdate(BaseModel):
+    """Settings the panel may change. Null puts a field back on its .env default."""
+
+    mode: str | None = None
+    refresh_interval: int | None = Field(default=None, ge=60)
+    fetch_timeout: int | None = Field(default=None, ge=1, le=300)
+    health_check: bool | None = None
+    tcp_timeout: int | None = Field(default=None, ge=1, le=60)
+    max_concurrency: int | None = Field(default=None, ge=1, le=1000)
+    max_configs: int | None = Field(default=None, ge=0)
+    max_per_endpoint: int | None = Field(default=None, ge=0)
+    max_per_subscription: int | None = Field(default=None, ge=0)
+    remark_prefix: str | None = Field(default=None, max_length=64)
+    disabled: bool | None = None
+
+    @field_validator("mode", mode="after")
+    @classmethod
+    def validate_mode(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip().lower()
+        if value not in ("all", "groups"):
+            raise ValueError('mode must be either "all" or "groups"')
+        return value
+
+
+class FreeConfigSettingsResponse(BaseModel):
+    effective: dict
+    stored: dict
+    defaults: dict
+    env_enabled: bool = Field(
+        description="FREE_CONFIGS_ENABLED in .env. When false the panel cannot switch the feature on."
+    )
 
 
 class RefreshStats(BaseModel):
@@ -73,6 +149,8 @@ class FreeConfigsStatus(BaseModel):
     last_stats: RefreshStats | None = None
     pool_total: int = 0
     pool_healthy: int = 0
+    pool_disabled: int = 0
+    pool_manual: int = 0
     pool_last_checked_at: dt | None = None
     supported_schemes: list[str] = Field(default_factory=lambda: list(SUPPORTED_SCHEMES))
     note: str = (

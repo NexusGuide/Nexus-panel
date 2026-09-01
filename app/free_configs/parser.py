@@ -157,31 +157,38 @@ def _parse_generic(uri: str) -> ParsedConfig | None:
     return ParsedConfig(uri=uri, protocol=protocol, address=parsed.hostname, port=port)
 
 
-def label_uri(uri: str, prefix: str) -> str:
-    """Prefix a config's display remark so free entries are obvious in the client.
+def label_uri(uri: str, prefix: str, remark_override: str | None = None) -> str:
+    """Set a config's display remark: the admin's name if there is one, else prefixed.
+
+    ``remark_override`` replaces the config's own name outright - that is the
+    point of letting an admin rename an entry. The prefix is still applied on
+    top, so a renamed config is still recognisable as a free one.
 
     Falls back to the original URI whenever the entry cannot be rewritten safely -
     a cosmetic feature must never drop a working config.
     """
     prefix = (prefix or "").strip()
-    if not prefix:
+    override = (remark_override or "").strip()
+    if not prefix and not override:
         return uri
 
     try:
         if uri.startswith("vmess://"):
             payload = json.loads(_b64decode(uri[len("vmess://") :]))
-            remark = str(payload.get("ps") or "")
-            if remark.startswith(prefix):
-                return uri
-            payload["ps"] = f"{prefix} {remark}".strip()
+            remark = override or str(payload.get("ps") or "")
+            if prefix and not remark.startswith(prefix):
+                remark = f"{prefix} {remark}".strip()
+            payload["ps"] = remark
             encoded = base64.b64encode(json.dumps(payload, ensure_ascii=False).encode("utf-8")).decode("utf-8")
             return f"vmess://{encoded}"
 
         base, sep, fragment = uri.partition("#")
-        remark = unquote(fragment) if sep else ""
-        if remark.startswith(prefix):
+        remark = override or (unquote(fragment) if sep else "")
+        if prefix and not remark.startswith(prefix):
+            remark = f"{prefix} {remark}".strip()
+        if not remark:
             return uri
-        return f"{base}#{quote(f'{prefix} {remark}'.strip(), safe='')}"
+        return f"{base}#{quote(remark, safe='')}"
     except (ValueError, TypeError, AttributeError, KeyError, binascii.Error, json.JSONDecodeError):
         return uri
 

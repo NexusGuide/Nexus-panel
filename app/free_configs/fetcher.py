@@ -10,8 +10,8 @@ from dataclasses import dataclass
 import aiohttp
 
 from app.free_configs.parser import ParsedConfig, decode_body, parse_many
+from app.free_configs.settings import get_settings
 from app.utils.logger import get_logger
-from config import free_configs_settings
 
 logger = get_logger("free-configs")
 
@@ -66,7 +66,8 @@ async def iter_fetched_sources(sources: list[tuple[int | None, str, bool]]):
 
     ``sources`` is a list of ``(source_id, url, is_base64)`` tuples.
     """
-    timeout = aiohttp.ClientTimeout(total=free_configs_settings.fetch_timeout)
+    settings = await get_settings()
+    timeout = aiohttp.ClientTimeout(total=settings.fetch_timeout)
     async with aiohttp.ClientSession(timeout=timeout) as session:
         tasks = [
             asyncio.create_task(fetch_source(session, url, is_base64, source_id))
@@ -87,6 +88,7 @@ async def check_endpoint(address: str, port: int, semaphore: asyncio.Semaphore) 
     A successful connect only proves the port answers - it is not proof that the
     proxy protocol itself works. That caveat is surfaced in the API and docs.
     """
+    settings = await get_settings()
     async with semaphore:
         loop = asyncio.get_running_loop()
         started = loop.time()
@@ -94,7 +96,7 @@ async def check_endpoint(address: str, port: int, semaphore: asyncio.Semaphore) 
         try:
             _, writer = await asyncio.wait_for(
                 asyncio.open_connection(address, port),
-                timeout=free_configs_settings.tcp_timeout,
+                timeout=settings.tcp_timeout,
             )
             return int((loop.time() - started) * 1000)
         except (asyncio.TimeoutError, OSError, ValueError):
@@ -122,7 +124,8 @@ async def iter_checked_batches(configs: list[ParsedConfig], batch_size: int = 50
     that is enough to get the process OOM-killed. Batching keeps the number of
     live objects flat regardless of pool size.
     """
-    if not free_configs_settings.health_check:
+    settings = await get_settings()
+    if not settings.health_check:
         # health checking disabled: keep everything, mark unknown latency
         for start in range(0, len(configs), batch_size):
             yield [HealthResult(config=config, is_healthy=True) for config in configs[start : start + batch_size]]
@@ -136,7 +139,7 @@ async def iter_checked_batches(configs: list[ParsedConfig], batch_size: int = 50
     endpoints = {(config.address, config.port) for config in configs}
     logger.info("free-configs: %d configs live on %d distinct endpoints", len(configs), len(endpoints))
 
-    semaphore = asyncio.Semaphore(free_configs_settings.max_concurrency)
+    semaphore = asyncio.Semaphore(settings.max_concurrency)
     latencies: dict[tuple[str, int], int | None] = {}
     pending = list(endpoints)
     for start in range(0, len(pending), batch_size):

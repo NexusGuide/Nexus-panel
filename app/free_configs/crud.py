@@ -2,13 +2,13 @@
 
 from datetime import UTC, datetime as dt
 
-from sqlalchemy import delete, exists, func, insert, select, update
+from sqlalchemy import delete, exists, func, insert, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Group, users_groups_association
 from app.free_configs.fetcher import HealthResult
-from app.free_configs.models import FreeConfig, FreeConfigGroupAccess, FreeConfigSource
-from config import free_configs_settings
+from app.free_configs.models import FreeConfig, FreeConfigGroupAccess, FreeConfigOverride, FreeConfigSource
+from app.free_configs.settings import get_settings
 
 # --------------------------------------------------------------------------- #
 # sources
@@ -100,16 +100,22 @@ async def replace_configs(db: AsyncSession, results: list[HealthResult], source_
     Returns the number of configs stored.
     """
     now = dt.now(UTC)
+    overrides = await get_overrides_map(db)
+    manual_hashes = {uri_hash for uri_hash, row in overrides.items() if row.uri is not None}
 
     # One server often carries dozens of near-identical configs. Serving all of
     # them pads a subscription with entries that all fail together when that
     # server goes down, so keep only a few per endpoint - different credentials
     # or transports on the same host are worth a couple of tries, not thirty.
-    per_endpoint = free_configs_settings.max_per_endpoint
+    per_endpoint = (await get_settings()).max_per_endpoint
     if per_endpoint > 0:
         kept: list[HealthResult] = []
         seen: dict[tuple[str, int], int] = {}
         for result in results:
+            # a hand-added config is never squeezed out by the cap
+            if result.config.uri_hash in manual_hashes:
+                kept.append(result)
+                continue
             if not result.is_healthy:
                 continue
             key = (result.config.address, result.config.port)
@@ -126,14 +132,19 @@ async def replace_configs(db: AsyncSession, results: list[HealthResult], source_
             "protocol": result.config.protocol,
             "address": result.config.address,
             "port": result.config.port,
-            "is_healthy": True,
+            "is_healthy": result.is_healthy,
+            # the admin's switch, re-applied to the freshly harvested pool
+            "is_enabled": overrides[result.config.uri_hash].is_enabled
+            if result.config.uri_hash in overrides
+            else True,
+            "is_manual": result.config.uri_hash in manual_hashes,
             "latency_ms": result.latency_ms,
             "last_checked_at": now,
             "source_id": source_ids.get(result.config.uri_hash),
             "created_at": now,
         }
         for result in results
-        if result.is_healthy
+        if result.is_healthy or result.config.uri_hash in manual_hashes
     ]
 
     await db.execute(delete(FreeConfig))
@@ -143,26 +154,83 @@ async def replace_configs(db: AsyncSession, results: list[HealthResult], source_
     return len(rows)
 
 
-async def get_healthy_configs(db: AsyncSession, limit: int = 0) -> list[str]:
-    """Return healthy URIs, fastest first (unknown latency last)."""
+async def get_healthy_configs(db: AsyncSession, limit: int = 0) -> list[tuple[str, str | None]]:
+    """URIs to serve, fastest first, as ``(uri, remark_override)`` pairs.
+
+    Excludes anything the admin switched off. Manual entries are served even
+    when the health check could not reach them - they were added deliberately,
+    and second-guessing that is not this function's job.
+    """
     stmt = (
-        select(FreeConfig.uri)
-        .where(FreeConfig.is_healthy.is_(True))
-        .order_by(FreeConfig.latency_ms.is_(None), FreeConfig.latency_ms.asc(), FreeConfig.id.asc())
+        select(FreeConfig.uri, FreeConfigOverride.remark)
+        .outerjoin(FreeConfigOverride, FreeConfigOverride.uri_hash == FreeConfig.uri_hash)
+        .where(FreeConfig.is_enabled.is_(True))
+        .where(or_(FreeConfig.is_healthy.is_(True), FreeConfig.is_manual.is_(True)))
+        .order_by(
+            FreeConfig.is_manual.desc(),
+            FreeConfig.latency_ms.is_(None),
+            FreeConfig.latency_ms.asc(),
+            FreeConfig.id.asc(),
+        )
     )
     if limit > 0:
         stmt = stmt.limit(limit)
-    return list((await db.execute(stmt)).scalars().all())
+    return [(uri, remark) for uri, remark in (await db.execute(stmt)).all()]
 
 
-async def get_configs(db: AsyncSession, healthy_only: bool = True, limit: int = 100) -> list[FreeConfig]:
-    """Inspect the pool, fastest endpoints first (unknown latency last)."""
-    stmt = select(FreeConfig)
-    if healthy_only:
-        stmt = stmt.where(FreeConfig.is_healthy.is_(True))
-    stmt = stmt.order_by(FreeConfig.latency_ms.is_(None), FreeConfig.latency_ms.asc(), FreeConfig.id.asc())
-    stmt = stmt.limit(max(1, min(limit, 1000)))
-    return list((await db.execute(stmt)).scalars().all())
+async def get_configs_page(
+    db: AsyncSession,
+    *,
+    search: str | None = None,
+    protocol: str | None = None,
+    status: str = "all",
+    offset: int = 0,
+    limit: int = 50,
+) -> tuple[list[tuple[FreeConfig, FreeConfigOverride | None]], int]:
+    """One page of the pool for the admin UI, with each config's override.
+
+    ``status`` is one of all / enabled / disabled / manual / unhealthy.
+    """
+    stmt = select(FreeConfig, FreeConfigOverride).outerjoin(
+        FreeConfigOverride, FreeConfigOverride.uri_hash == FreeConfig.uri_hash
+    )
+    count_stmt = select(func.count()).select_from(FreeConfig)
+
+    conditions = []
+    if search:
+        pattern = f"%{search.strip()}%"
+        conditions.append(or_(FreeConfig.address.ilike(pattern), FreeConfig.uri.ilike(pattern)))
+    if protocol:
+        conditions.append(FreeConfig.protocol == protocol)
+    if status == "enabled":
+        conditions.append(FreeConfig.is_enabled.is_(True))
+    elif status == "disabled":
+        conditions.append(FreeConfig.is_enabled.is_(False))
+    elif status == "manual":
+        conditions.append(FreeConfig.is_manual.is_(True))
+    elif status == "unhealthy":
+        conditions.append(FreeConfig.is_healthy.is_(False))
+
+    for condition in conditions:
+        stmt = stmt.where(condition)
+        count_stmt = count_stmt.where(condition)
+
+    stmt = stmt.order_by(
+        FreeConfig.is_manual.desc(),
+        FreeConfig.latency_ms.is_(None),
+        FreeConfig.latency_ms.asc(),
+        FreeConfig.id.asc(),
+    ).offset(max(0, offset)).limit(max(1, min(limit, 500)))
+
+    rows = [(config, override) for config, override in (await db.execute(stmt)).all()]
+    total = (await db.execute(count_stmt)).scalar_one()
+    return rows, total
+
+
+async def get_protocols(db: AsyncSession) -> list[str]:
+    """Distinct protocols present in the pool, for the UI's filter."""
+    stmt = select(FreeConfig.protocol).distinct().order_by(FreeConfig.protocol)
+    return [p for p in (await db.execute(stmt)).scalars().all() if p]
 
 
 async def get_pool_stats(db: AsyncSession) -> dict:
@@ -170,8 +238,156 @@ async def get_pool_stats(db: AsyncSession) -> dict:
     healthy = (
         await db.execute(select(func.count()).select_from(FreeConfig).where(FreeConfig.is_healthy.is_(True)))
     ).scalar_one()
+    disabled = (
+        await db.execute(select(func.count()).select_from(FreeConfig).where(FreeConfig.is_enabled.is_(False)))
+    ).scalar_one()
+    manual = (
+        await db.execute(select(func.count()).select_from(FreeConfig).where(FreeConfig.is_manual.is_(True)))
+    ).scalar_one()
     last_checked = (await db.execute(select(func.max(FreeConfig.last_checked_at)))).scalar_one()
-    return {"total": total, "healthy": healthy, "last_checked_at": last_checked}
+    return {
+        "total": total,
+        "healthy": healthy,
+        "disabled": disabled,
+        "manual": manual,
+        "last_checked_at": last_checked,
+    }
+
+
+# --------------------------------------------------------------------------- #
+# per-config overrides
+# --------------------------------------------------------------------------- #
+
+
+async def get_overrides_map(db: AsyncSession) -> dict[str, FreeConfigOverride]:
+    rows = (await db.execute(select(FreeConfigOverride))).scalars().all()
+    return {row.uri_hash: row for row in rows}
+
+
+async def get_manual_overrides(db: AsyncSession) -> list[FreeConfigOverride]:
+    stmt = select(FreeConfigOverride).where(FreeConfigOverride.uri.is_not(None))
+    return list((await db.execute(stmt)).scalars().all())
+
+
+async def get_config_by_hash(db: AsyncSession, uri_hash: str) -> FreeConfig | None:
+    return (await db.execute(select(FreeConfig).where(FreeConfig.uri_hash == uri_hash))).scalar_one_or_none()
+
+
+async def set_overrides_bulk(db: AsyncSession, uri_hashes: list[str], is_enabled: bool) -> int:
+    """Switch many configs at once, in one pass rather than a query per config."""
+    wanted = [h for h in dict.fromkeys(uri_hashes) if h]
+    if not wanted:
+        return 0
+
+    existing = {
+        row.uri_hash: row
+        for row in (
+            await db.execute(select(FreeConfigOverride).where(FreeConfigOverride.uri_hash.in_(wanted)))
+        ).scalars().all()
+    }
+    for uri_hash in wanted:
+        if uri_hash in existing:
+            existing[uri_hash].is_enabled = is_enabled
+        else:
+            db.add(FreeConfigOverride(uri_hash=uri_hash, is_enabled=is_enabled))
+
+    await db.execute(update(FreeConfig).where(FreeConfig.uri_hash.in_(wanted)).values(is_enabled=is_enabled))
+    await db.commit()
+    return len(wanted)
+
+
+async def get_override(db: AsyncSession, uri_hash: str) -> FreeConfigOverride | None:
+    stmt = select(FreeConfigOverride).where(FreeConfigOverride.uri_hash == uri_hash)
+    return (await db.execute(stmt)).scalar_one_or_none()
+
+
+async def set_override(
+    db: AsyncSession,
+    uri_hash: str,
+    *,
+    is_enabled: bool | None = None,
+    remark: str | None = None,
+    note: str | None = None,
+    uri: str | None = None,
+) -> FreeConfigOverride:
+    """Create or update one config's override, and mirror it onto the pool row.
+
+    The mirror is what lets the subscription path stay a single indexed query
+    instead of joining overrides on every request.
+    """
+    override = await get_override(db, uri_hash)
+    if override is None:
+        override = FreeConfigOverride(uri_hash=uri_hash)
+        db.add(override)
+
+    if is_enabled is not None:
+        override.is_enabled = is_enabled
+    if remark is not None:
+        override.remark = remark or None
+    if note is not None:
+        override.note = note or None
+    if uri is not None:
+        override.uri = uri
+
+    if is_enabled is not None:
+        await db.execute(update(FreeConfig).where(FreeConfig.uri_hash == uri_hash).values(is_enabled=is_enabled))
+
+    await db.commit()
+    await db.refresh(override)
+    return override
+
+
+async def clear_override(db: AsyncSession, uri_hash: str) -> bool:
+    """Forget an override entirely. Manual entries also leave the pool."""
+    override = await get_override(db, uri_hash)
+    if override is None:
+        return False
+    was_manual = override.uri is not None
+    await db.delete(override)
+    if was_manual:
+        await db.execute(delete(FreeConfig).where(FreeConfig.uri_hash == uri_hash))
+    else:
+        await db.execute(update(FreeConfig).where(FreeConfig.uri_hash == uri_hash).values(is_enabled=True))
+    await db.commit()
+    return True
+
+
+async def upsert_manual_config(db: AsyncSession, config, remark: str | None = None) -> FreeConfig:
+    """Add a hand-entered config to both the override table and the pool.
+
+    It goes into the pool immediately rather than waiting for the next refresh,
+    because an admin who just pasted a config expects to see it.
+    """
+    await set_override(db, config.uri_hash, uri=config.uri, remark=remark, is_enabled=True)
+
+    now = dt.now(UTC)
+    existing = (
+        await db.execute(select(FreeConfig).where(FreeConfig.uri_hash == config.uri_hash))
+    ).scalar_one_or_none()
+    if existing is not None:
+        existing.is_manual = True
+        existing.is_enabled = True
+        await db.commit()
+        await db.refresh(existing)
+        return existing
+
+    row = FreeConfig(
+        uri=config.uri,
+        uri_hash=config.uri_hash,
+        protocol=config.protocol,
+        address=config.address,
+        port=config.port,
+        is_healthy=False,
+        is_enabled=True,
+        is_manual=True,
+        latency_ms=None,
+        last_checked_at=None,
+        source_id=None,
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return row
 
 
 # --------------------------------------------------------------------------- #

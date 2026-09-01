@@ -176,7 +176,23 @@ cmd_install() {
 
     if [ "$DO_SEED" -eq 1 ] && [ "$FREE_CONFIGS" = "true" ]; then
         cmd_seed
-        cmd_refresh || warn "the first refresh did not finish - it will retry on schedule"
+        # Judge the refresh by what landed in the pool, not by the exit code:
+        # `docker compose exec` can return non-zero for unrelated reasons (an
+        # orphan container from an older stack, for one) even when the refresh
+        # itself finished fine.
+        cmd_refresh || true
+        if $COMPOSE exec -T panel python -c \
+            "import asyncio; from app.db import GetDB; from app.free_configs import crud
+async def m():
+    async with GetDB() as db:
+        s = await crud.get_pool_stats(db)
+        raise SystemExit(0 if s['healthy'] else 1)
+asyncio.run(m())" 2>/dev/null
+        then
+            info "the pool is populated"
+        else
+            warn "the pool is still empty - the scheduled job will retry, or run: $0 refresh"
+        fi
     fi
 
     cat <<EOF

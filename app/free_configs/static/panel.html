@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Free Configs</title>
+<style>
+  /* Colours follow the dashboard's own light/dark switch. The page is embedded
+     in it, so it has to change with it rather than pick a side. */
+  :root {
+    --bg: #ffffff; --fg: #0b0d12; --muted: #6b7280; --line: #e5e7eb;
+    --card: #f9fafb; --accent: #2563eb; --accent-fg: #ffffff;
+    --ok: #16a34a; --warn: #d97706; --bad: #dc2626; --hover: #f3f4f6;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b0d12; --fg: #e6e8ec; --muted: #9aa1ac; --line: #1f2430;
+    --card: #12161f; --accent: #3b82f6; --accent-fg: #ffffff;
+    --ok: #22c55e; --warn: #f59e0b; --bad: #ef4444; --hover: #171c26;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px; background: var(--bg); color: var(--fg);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  h2 { margin: 0 0 2px; font-size: 16px; }
+  .sub { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .grow { flex: 1 1 220px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-bottom: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .card .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+  .card .v { font-size: 20px; font-weight: 600; margin-top: 2px; }
+  input, select, button, textarea {
+    font: inherit; color: var(--fg); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px;
+  }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  button { cursor: pointer; }
+  button:hover:not(:disabled) { background: var(--hover); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  button.primary:hover:not(:disabled) { filter: brightness(1.08); background: var(--accent); }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+  .tabs button { border: 0; border-radius: 0; background: none; padding: 8px 14px; color: var(--muted); border-bottom: 2px solid transparent; }
+  .tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); font-weight: 600; }
+  .wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; min-width: 720px; }
+  th, td { text-align: start; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { background: var(--card); font-size: 12px; color: var(--muted); font-weight: 600; position: sticky; top: 0; }
+  tr:last-child td { border-bottom: 0; }
+  tr.off td:not(.actions) { opacity: .45; }
+  td.uri { max-width: 340px; overflow: hidden; text-overflow: ellipsis; font-family: ui-monospace, monospace; font-size: 12px; }
+  .pill { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11px; border: 1px solid var(--line); }
+  .pill.ok { color: var(--ok); border-color: currentColor; }
+  .pill.bad { color: var(--bad); border-color: currentColor; }
+  .pill.man { color: var(--warn); border-color: currentColor; }
+  .muted { color: var(--muted); }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  label.field { display: block; }
+  label.field span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+  label.field input, label.field select { width: 100%; }
+  .hint { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .note { background: var(--card); border: 1px solid var(--line); border-inline-start: 3px solid var(--warn); border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; font-size: 13px; }
+  #toast { position: fixed; inset-block-end: 16px; inset-inline-end: 16px; background: var(--fg); color: var(--bg); padding: 9px 14px; border-radius: 8px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 20; }
+  #toast.show { opacity: 1; }
+  .empty { padding: 28px; text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<h2>Free Configs</h2>
+<div class="sub" id="subtitle">Community proxies harvested, checked, and appended to subscriptions.</div>
+
+<div class="cards" id="stats"></div>
+
+<div class="tabs" role="tablist">
+  <button role="tab" aria-selected="true" data-tab="pool">Pool</button>
+  <button role="tab" aria-selected="false" data-tab="sources">Sources</button>
+  <button role="tab" aria-selected="false" data-tab="settings">Settings</button>
+</div>
+
+<section id="tab-pool">
+  <div class="row" style="margin-bottom:10px">
+    <input class="grow" id="q" type="search" placeholder="Search address or URI...">
+    <select id="protocol"><option value="">All protocols</option></select>
+    <select id="status">
+      <option value="all">All</option>
+      <option value="enabled">Enabled</option>
+      <option value="disabled">Disabled</option>
+      <option value="manual">Manual</option>
+      <option value="unhealthy">Unreachable</option>
+    </select>
+    <button id="refreshPool">Reload</button>
+    <button id="rebuild" class="primary">Rebuild pool</button>
+  </div>
+
+  <div class="row" style="margin-bottom:10px">
+    <input class="grow" id="manualUri" placeholder="Add a config by hand: vless://... , vmess://... , ss://...">
+    <input id="manualRemark" placeholder="Name (optional)" style="width:170px">
+    <button id="addManual">Add</button>
+  </div>
+
+  <div class="row" id="bulkbar" style="margin-bottom:10px">
+    <span class="muted" id="selcount">0 selected</span>
+    <button id="bulkOn" disabled>Enable selected</button>
+    <button id="bulkOff" disabled>Disable selected</button>
+  </div>
+
+  <div class="wrap">
+    <table>
+      <thead><tr>
+        <th style="width:28px"><input type="checkbox" id="selall"></th>
+        <th>On</th><th>Protocol</th><th>Address</th><th>Port</th>
+        <th>Latency</th><th>State</th><th>Name</th><th>URI</th><th></th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <button id="prev">Previous</button>
+    <span class="muted" id="pageinfo"></span>
+    <button id="next">Next</button>
+  </div>
+</section>
+
+<section id="tab-sources" hidden>
+  <div class="row" style="margin-bottom:10px">
+    <input class="grow" id="srcUrl" placeholder="https://example.com/list.txt">
+    <input id="srcRemark" placeholder="Name (optional)" style="width:170px">
+    <label class="row" style="gap:5px"><input type="checkbox" id="srcB64"> base64 body</label>
+    <button id="addSource" class="primary">Add source</button>
+  </div>
+  <div class="wrap">
+    <table>
+      <thead><tr><th>On</th><th>Name</th><th>URL</th><th>Last fetch</th><th>Count</th><th>Error</th><th></th></tr></thead>
+      <tbody id="srcRows"></tbody>
+    </table>
+  </div>
+</section>
+
+<section id="tab-settings" hidden>
+  <div class="note" id="envNote" hidden></div>
+  <div class="grid2" id="settingsForm"></div>
+  <div class="row" style="margin-top:14px">
+    <button id="saveSettings" class="primary">Save settings</button>
+    <button id="resetSettings">Reset all to .env defaults</button>
+  </div>
+  <p class="hint" style="margin-top:12px">
+    An empty field means "use the value from <code>.env</code>". <code>FREE_CONFIGS_ENABLED</code>
+    is not here on purpose: this page can switch the feature off, never on, so a panel that never
+    opted in cannot be enabled from a web form.
+  </p>
+</section>
+
+<div id="toast"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  const API = '/api/free-configs';
+  const state = { offset: 0, limit: 50, total: 0, selected: new Set(), protocols: [], settings: null };
+
+  // The dashboard keeps its token in localStorage on this same origin, so an
+  // embedded page can authenticate as the admin already signed in. Nothing is
+  // baked into the HTML - every read still goes through the owner-only API.
+  const token = () => { try { return localStorage.getItem('token') || ''; } catch { return ''; } };
+
+  function syncTheme() {
+    // Inside the dashboard we follow its <html data-theme>; standalone we follow the OS.
+    let dark = false;
+    try {
+      const parentTheme = window.parent !== window ? window.parent.document.documentElement : null;
+      if (parentTheme) dark = parentTheme.classList.contains('dark') || parentTheme.dataset.theme === 'dark';
+      else dark = matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch { dark = matchMedia('(prefers-color-scheme: dark)').matches; }
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  }
+
+  let toastTimer;
+  function toast(message) {
+    const el = document.getElementById('toast');
+    el.textContent = message;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+  }
+
+  async function api(path, options = {}) {
+    const response = await fetch(API + path, {
+      ...options,
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token(), ...(options.headers || {}) },
+    });
+    if (response.status === 401 || response.status === 403) {
+      throw new Error('Not authorised - this page is for the panel owner. Try signing in again.');
+    }
+    if (!response.ok) {
+      let detail = response.status + ' ' + response.statusText;
+      try {
+        const body = await response.json();
+        if (body && body.detail) detail = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail);
+      } catch { /* keep the status line */ }
+      throw new Error(detail);
+    }
+    return response.status === 204 ? null : response.json();
+  }
+
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  // ---------------------------------------------------------------- stats
+
+  async function loadStatus() {
+    const s = await api('/status');
+    document.getElementById('stats').innerHTML = [
+      ['In pool', s.pool_total],
+      ['Reachable', s.pool_healthy],
+      ['Switched off', s.pool_disabled],
+      ['Added by hand', s.pool_manual],
+      ['Per subscription', (s.last_stats ? '' : '') + (state.settings ? state.settings.effective.max_per_subscription || 'all' : '-')],
+    ].map(([k, v]) => `<div class="card"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`).join('');
+
+    const when = s.pool_last_checked_at ? new Date(s.pool_last_checked_at).toLocaleString() : 'never';
+    document.getElementById('subtitle').textContent =
+      `${s.enabled ? 'Active' : 'Switched off'} · mode "${s.mode}" · last checked ${when}` +
+      (s.running ? ' · a rebuild is running' : '');
+    document.getElementById('rebuild').disabled = !!s.running;
+  }
+
+  // ---------------------------------------------------------------- pool
+
+  function renderRows(items) {
+    const rows = document.getElementById('rows');
+    if (!items.length) {
+      rows.innerHTML = `<tr><td colspan="10" class="empty">Nothing here yet. Add a source, then rebuild the pool.</td></tr>`;
+      return;
+    }
+    rows.innerHTML = items.map(c => `
+      <tr class="${c.is_enabled ? '' : 'off'}">
+        <td><input type="checkbox" class="sel" data-hash="${esc(c.uri_hash)}" ${state.selected.has(c.uri_hash) ? 'checked' : ''}></td>
+        <td><input type="checkbox" class="tog" data-hash="${esc(c.uri_hash)}" ${c.is_enabled ? 'checked' : ''}></td>
+        <td>${esc(c.protocol)}</td>
+        <td>${esc(c.address)}</td>
+        <td>${esc(c.port)}</td>
+        <td>${c.latency_ms == null ? '<span class="muted">-</span>' : esc(c.latency_ms) + ' ms'}</td>
+        <td>
+          ${c.is_manual ? '<span class="pill man">manual</span> ' : ''}
+          ${c.is_healthy ? '<span class="pill ok">reachable</span>' : '<span class="pill bad">no answer</span>'}
+        </td>
+        <td><input class="rename" data-hash="${esc(c.uri_hash)}" value="${esc(c.remark || '')}" placeholder="-" style="width:130px"></td>
+        <td class="uri" title="${esc(c.uri)}">${esc(c.uri)}</td>
+        <td class="actions"><button class="del" data-hash="${esc(c.uri_hash)}" title="Forget this override">Reset</button></td>
+      </tr>`).join('');
+  }
+
+  async function loadPool() {
+    const params = new URLSearchParams({
+      offset: state.offset, limit: state.limit,
+      status: document.getElementById('status').value,
+    });
+    const q = document.getElementById('q').value.trim();
+    const protocol = document.getElementById('protocol').value;
+    if (q) params.set('search', q);
+    if (protocol) params.set('protocol', protocol);
+
+    const page = await api('/configs?' + params);
+    state.total = page.total;
+    renderRows(page.items);
+
+    if (page.protocols.join() !== state.protocols.join()) {
+      state.protocols = page.protocols;
+      const select = document.getElementById('protocol');
+      const current = select.value;
+      select.innerHTML = '<option value="">All protocols</option>' +
+        page.protocols.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+      select.value = current;
+    }
+
+    const from = page.total === 0 ? 0 : state.offset + 1;
+    const to = Math.min(state.offset + state.limit, page.total);
+    document.getElementById('pageinfo').textContent = `${from}-${to} of ${page.total}`;
+    document.getElementById('prev').disabled = state.offset === 0;
+    document.getElementById('next').disabled = to >= page.total;
+  }
+
+  function updateSelectionUI() {
+    document.getElementById('selcount').textContent = state.selected.size + ' selected';
+    document.getElementById('bulkOn').disabled = state.selected.size === 0;
+    document.getElementById('bulkOff').disabled = state.selected.size === 0;
+  }
+
+  document.getElementById('rows').addEventListener('change', async e => {
+    const hash = e.target.dataset.hash;
+    if (!hash) return;
+    try {
+      if (e.target.classList.contains('sel')) {
+        e.target.checked ? state.selected.add(hash) : state.selected.delete(hash);
+        updateSelectionUI();
+      } else if (e.target.classList.contains('tog')) {
+        await api('/configs/' + hash, { method: 'PUT', body: JSON.stringify({ is_enabled: e.target.checked }) });
+        e.target.closest('tr').classList.toggle('off', !e.target.checked);
+        toast(e.target.checked ? 'Enabled' : 'Disabled');
+        loadStatus();
+      } else if (e.target.classList.contains('rename')) {
+        await api('/configs/' + hash, { method: 'PUT', body: JSON.stringify({ remark: e.target.value }) });
+        toast('Renamed');
+      }
+    } catch (err) { toast(err.message); loadPool(); }
+  });
+
+  document.getElementById('rows').addEventListener('click', async e => {
+    if (!e.target.classList.contains('del')) return;
+    try {
+      await api('/configs/' + e.target.dataset.hash, { method: 'DELETE' });
+      toast('Override cleared');
+      await loadPool(); loadStatus();
+    } catch (err) { toast(err.message); }
+  });
+
+  document.getElementById('selall').addEventListener('change', e => {
+    document.querySelectorAll('#rows .sel').forEach(box => {
+      box.checked = e.target.checked;
+      e.target.checked ? state.selected.add(box.dataset.hash) : state.selected.delete(box.dataset.hash);
+    });
+    updateSelectionUI();
+  });
+
+  async function bulk(isEnabled) {
+    try {
+      await api('/configs/bulk', {
+        method: 'POST',
+        body: JSON.stringify({ uri_hashes: [...state.selected], is_enabled: isEnabled }),
+      });
+      toast(`${state.selected.size} config(s) ${isEnabled ? 'enabled' : 'disabled'}`);
+      state.selected.clear();
+      document.getElementById('selall').checked = false;
+      updateSelectionUI();
+      await loadPool(); loadStatus();
+    } catch (err) { toast(err.message); }
+  }
+  document.getElementById('bulkOn').onclick = () => bulk(true);
+  document.getElementById('bulkOff').onclick = () => bulk(false);
+
+  document.getElementById('addManual').onclick = async () => {
+    const uri = document.getElementById('manualUri').value.trim();
+    if (!uri) return;
+    try {
+      await api('/configs/manual', {
+        method: 'POST',
+        body: JSON.stringify({ uri, remark: document.getElementById('manualRemark').value.trim() || null }),
+      });
+      document.getElementById('manualUri').value = '';
+      document.getElementById('manualRemark').value = '';
+      toast('Added');
+      await loadPool(); loadStatus();
+    } catch (err) { toast(err.message); }
+  };
+
+  document.getElementById('rebuild').onclick = async () => {
+    try {
+      await api('/refresh', { method: 'POST' });
+      toast('Rebuilding - this fetches every source and checks every endpoint');
+      setTimeout(() => { loadStatus(); loadPool(); }, 4000);
+    } catch (err) { toast(err.message); }
+  };
+
+  let searchTimer;
+  document.getElementById('q').addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => { state.offset = 0; loadPool(); }, 300);
+  });
+  document.getElementById('protocol').onchange = () => { state.offset = 0; loadPool(); };
+  document.getElementById('status').onchange = () => { state.offset = 0; loadPool(); };
+  document.getElementById('refreshPool').onclick = () => { loadPool(); loadStatus(); };
+  document.getElementById('prev').onclick = () => { state.offset = Math.max(0, state.offset - state.limit); loadPool(); };
+  document.getElementById('next').onclick = () => { state.offset += state.limit; loadPool(); };
+
+  // ---------------------------------------------------------------- sources
+
+  async function loadSources() {
+    const sources = await api('/sources');
+    const body = document.getElementById('srcRows');
+    if (!sources.length) {
+      body.innerHTML = `<tr><td colspan="7" class="empty">No sources yet.</td></tr>`;
+      return;
+    }
+    body.innerHTML = sources.map(s => `
+      <tr class="${s.is_enabled ? '' : 'off'}">
+        <td><input type="checkbox" class="srctog" data-id="${s.id}" ${s.is_enabled ? 'checked' : ''}></td>
+        <td>${esc(s.remark || '-')}</td>
+        <td class="uri" title="${esc(s.url)}">${esc(s.url)}</td>
+        <td>${s.last_fetch_at ? esc(new Date(s.last_fetch_at).toLocaleString()) : '<span class="muted">never</span>'}</td>
+        <td>${esc(s.last_fetch_count)}</td>
+        <td class="uri" title="${esc(s.last_error || '')}">${s.last_error ? `<span class="pill bad">${esc(s.last_error)}</span>` : '<span class="muted">-</span>'}</td>
+        <td class="actions"><button class="srcdel" data-id="${s.id}">Delete</button></td>
+      </tr>`).join('');
+  }
+
+  document.getElementById('srcRows').addEventListener('change', async e => {
+    if (!e.target.classList.contains('srctog')) return;
+    try {
+      await api('/sources/' + e.target.dataset.id, { method: 'PUT', body: JSON.stringify({ is_enabled: e.target.checked }) });
+      e.target.closest('tr').classList.toggle('off', !e.target.checked);
+      toast('Saved');
+    } catch (err) { toast(err.message); loadSources(); }
+  });
+
+  document.getElementById('srcRows').addEventListener('click', async e => {
+    if (!e.target.classList.contains('srcdel')) return;
+    if (!confirm('Delete this source? Its configs stay until the next rebuild.')) return;
+    try {
+      await api('/sources/' + e.target.dataset.id, { method: 'DELETE' });
+      toast('Deleted');
+      loadSources();
+    } catch (err) { toast(err.message); }
+  });
+
+  document.getElementById('addSource').onclick = async () => {
+    const url = document.getElementById('srcUrl').value.trim();
+    if (!url) return;
+    try {
+      await api('/sources', {
+        method: 'POST',
+        body: JSON.stringify({
+          url,
+          remark: document.getElementById('srcRemark').value.trim(),
+          is_base64: document.getElementById('srcB64').checked,
+        }),
+      });
+      document.getElementById('srcUrl').value = '';
+      document.getElementById('srcRemark').value = '';
+      document.getElementById('srcB64').checked = false;
+      toast('Source added');
+      loadSources();
+    } catch (err) { toast(err.message); }
+  };
+
+  // ---------------------------------------------------------------- settings
+
+  const FIELDS = [
+    ['mode', 'Who gets them', 'select', ['all', 'groups'], 'all = every user; groups = only members of opted-in groups'],
+    ['remark_prefix', 'Label prefix', 'text', null, 'Prepended to each free entry so users can tell them apart'],
+    ['max_per_subscription', 'Configs per subscription', 'number', null, 'Fastest first. 0 = every enabled config'],
+    ['max_per_endpoint', 'Configs per server', 'number', null, 'They all fail together, so a handful is as useful as thirty. 0 = no limit'],
+    ['refresh_interval', 'Rebuild every (seconds)', 'number', null, 'Takes effect within five minutes - no restart needed'],
+    ['max_configs', 'Configs checked per rebuild', 'number', null, '0 = all of them'],
+    ['health_check', 'Check reachability', 'checkbox', null, 'Off keeps every harvested config, unchecked'],
+    ['tcp_timeout', 'Connect timeout (seconds)', 'number', null, ''],
+    ['max_concurrency', 'Parallel checks', 'number', null, ''],
+    ['fetch_timeout', 'Source download timeout (seconds)', 'number', null, ''],
+  ];
+
+  async function loadSettings() {
+    const data = await api('/settings');
+    state.settings = data;
+
+    const note = document.getElementById('envNote');
+    if (!data.env_enabled) {
+      note.hidden = false;
+      note.innerHTML = '<strong>FREE_CONFIGS_ENABLED is false in .env</strong>, so nothing here is served yet. ' +
+        'Set it to true in <code>/opt/pasarguard/.env</code> and restart the panel.';
+    } else {
+      note.hidden = false;
+      note.innerHTML = 'The feature is <strong>' + (data.stored.disabled ? 'switched off from this page' : 'active') +
+        '</strong>. <label style="margin-inline-start:8px"><input type="checkbox" id="killSwitch" ' +
+        (data.stored.disabled ? 'checked' : '') + '> stop serving free configs</label>';
+    }
+
+    document.getElementById('settingsForm').innerHTML = FIELDS.map(([key, label, type, options, hint]) => {
+      const stored = data.stored[key];
+      const fallback = data.defaults[key];
+      let control;
+      if (type === 'select') {
+        control = `<select id="f_${key}"><option value="">Default (${esc(fallback)})</option>` +
+          options.map(o => `<option value="${o}" ${stored === o ? 'selected' : ''}>${o}</option>`).join('') + '</select>';
+      } else if (type === 'checkbox') {
+        control = `<select id="f_${key}">
+            <option value="" ${stored === null ? 'selected' : ''}>Default (${fallback ? 'on' : 'off'})</option>
+            <option value="true" ${stored === true ? 'selected' : ''}>On</option>
+            <option value="false" ${stored === false ? 'selected' : ''}>Off</option>
+          </select>`;
+      } else {
+        control = `<input id="f_${key}" type="${type}" value="${stored === null || stored === undefined ? '' : esc(stored)}" placeholder="Default (${esc(fallback)})">`;
+      }
+      return `<label class="field"><span>${esc(label)}</span>${control}${hint ? `<div class="hint">${esc(hint)}</div>` : ''}</label>`;
+    }).join('');
+  }
+
+  document.getElementById('saveSettings').onclick = async () => {
+    const payload = {};
+    for (const [key, , type] of FIELDS) {
+      const raw = document.getElementById('f_' + key).value;
+      if (raw === '') { payload[key] = null; continue; }
+      if (type === 'number') payload[key] = Number(raw);
+      else if (type === 'checkbox') payload[key] = raw === 'true';
+      else payload[key] = raw;
+    }
+    const kill = document.getElementById('killSwitch');
+    if (kill) payload.disabled = kill.checked;
+    try {
+      await api('/settings', { method: 'PUT', body: JSON.stringify(payload) });
+      toast('Settings saved');
+      await loadSettings(); loadStatus();
+    } catch (err) { toast(err.message); }
+  };
+
+  document.getElementById('resetSettings').onclick = async () => {
+    if (!confirm('Put every setting back on its .env default?')) return;
+    const payload = Object.fromEntries(FIELDS.map(([key]) => [key, null]));
+    payload.disabled = false;
+    try {
+      await api('/settings', { method: 'PUT', body: JSON.stringify(payload) });
+      toast('Back to .env defaults');
+      await loadSettings(); loadStatus();
+    } catch (err) { toast(err.message); }
+  };
+
+  // ---------------------------------------------------------------- tabs
+
+  document.querySelectorAll('.tabs button').forEach(button => {
+    button.onclick = () => {
+      document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b === button)));
+      for (const name of ['pool', 'sources', 'settings']) {
+        document.getElementById('tab-' + name).hidden = name !== button.dataset.tab;
+      }
+      if (button.dataset.tab === 'sources') loadSources().catch(e => toast(e.message));
+      if (button.dataset.tab === 'settings') loadSettings().catch(e => toast(e.message));
+    };
+  });
+
+  // ---------------------------------------------------------------- boot
+
+  syncTheme();
+  setInterval(syncTheme, 1500);
+  updateSelectionUI();
+
+  (async () => {
+    try {
+      await loadSettings();
+      await loadStatus();
+      await loadPool();
+    } catch (err) {
+      document.getElementById('rows').innerHTML =
+        `<tr><td colspan="10" class="empty">${esc(err.message)}</td></tr>`;
+      toast(err.message);
+    }
+  })();
+})();
+</script>
+</body>
+</html>

@@ -40,6 +40,8 @@ routers = [
     user_template.router,
     hwid.router,
     free_configs.router,
+    # the admin page itself: static HTML, no /api prefix, no data in the shell
+    free_configs.page_router,
 ]
 
 for router in routers:

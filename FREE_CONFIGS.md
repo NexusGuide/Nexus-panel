@@ -128,9 +128,9 @@ status | cli | backup | uninstall`. Only these are the wrapper's:
 > (`--network=host` because Docker's bridge network cannot resolve DNS on many
 > VPSes, which makes `apt-get` inside the build fail.)
 >
-> A local build is a complete panel, web UI included: the Dockerfile copies the
-> compiled dashboard out of upstream's published image rather than compiling it,
-> since this fork changes no dashboard source.
+> A local build is a complete panel, web UI included: the Dockerfile compiles
+> the dashboard in its own stage, so a clone and one `docker build` give the
+> same image CI publishes.
 
 ## Running from source (development)
 
@@ -209,6 +209,34 @@ curl https://panel.example.com/api/free-configs/status -H "Authorization: Bearer
 
 ---
 
+## The panel page
+
+**Free Configs** appears in the dashboard's sidebar for the owner. Three tabs:
+
+- **Pool** - every config, fastest first. Search by address or URI, filter by
+  protocol or state, switch entries on and off individually or in bulk, rename
+  them, and paste in configs by hand.
+- **Sources** - add, rename, enable, disable and delete the lists that get
+  harvested, with each one's last fetch count and error.
+- **Settings** - everything below, editable without a restart, plus a switch
+  that stops serving free configs entirely.
+
+Two decisions worth knowing about, because they are not obvious from the UI:
+
+- **Your choices are stored against the config's content hash, not its row.**
+  The pool is emptied and rebuilt on every refresh, so a "don't serve this"
+  stored on a row would be gone within a day. Keyed by hash, it is re-applied to
+  whatever the next refresh brings back - and still there if a config disappears
+  from every source for a week and then returns.
+- **The page can switch the feature off, never on.** `FREE_CONFIGS_ENABLED`
+  stays in `.env`, so an install that never opted in cannot be enabled through a
+  web form. Everything else in the settings tab overrides its `.env` value; an
+  empty field means "use `.env`".
+
+Configs added by hand are kept across refreshes, are never dropped by the
+per-server cap, and are served even if the health check cannot reach them - you
+added them deliberately, and the pool does not second-guess that.
+
 ## API
 
 All endpoints are **owner-only** — injecting third-party servers into user subscriptions
@@ -222,7 +250,13 @@ fork adds no new RBAC resource, which keeps the diff against upstream small.)
 | `PUT` | `/api/free-configs/sources/{id}` | enable/disable, edit remark |
 | `DELETE` | `/api/free-configs/sources/{id}` | delete a source |
 | `GET` | `/api/free-configs/status` | settings, last refresh, pool size |
-| `GET` | `/api/free-configs/configs` | inspect the pool |
+| `GET` | `/api/free-configs/configs` | page through the pool (search, filter) |
+| `PUT` | `/api/free-configs/configs/{hash}` | enable/disable, rename, annotate |
+| `POST` | `/api/free-configs/configs/bulk` | enable/disable many at once |
+| `POST` | `/api/free-configs/configs/manual` | add a config by hand |
+| `DELETE` | `/api/free-configs/configs/{hash}` | forget an override |
+| `GET` | `/api/free-configs/settings` | effective settings, overrides and defaults |
+| `PUT` | `/api/free-configs/settings` | change settings without a restart |
 | `POST` | `/api/free-configs/refresh` | trigger a refresh (async, `202`) |
 | `GET` | `/api/free-configs/groups` | read group opt-in list |
 | `PUT` | `/api/free-configs/groups` | replace group opt-in list |

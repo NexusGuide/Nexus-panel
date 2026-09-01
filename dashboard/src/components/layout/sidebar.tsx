@@ -32,6 +32,7 @@ import {
   FileUser,
   Fingerprint,
   GithubIcon,
+  Gift,
   Group,
   Key,
   Layers,
@@ -261,6 +262,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             title: 'apiKeys.title',
             url: '/api-keys',
             icon: Key,
+          }]
+        : []),
+      // fork feature: free configs. Owner-only, matching the API, which is
+      // owner-only because injecting third-party servers into subscriptions is
+      // a panel-wide trust decision rather than a delegated one.
+      ...(isOwner(admin)
+        ? [{
+            title: 'Free Configs',
+            url: '/free-configs',
+            icon: Gift,
           }]
         : []),
       ...(nodeNavItems.length > 0

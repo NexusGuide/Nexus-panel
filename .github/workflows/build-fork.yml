@@ -7,9 +7,9 @@
 #     with the built-in GITHUB_TOKEN - no secrets to configure.
 #   - build.yml only runs on a published release. This also runs on every push
 #     to main, so `:latest` tracks the branch and there is always an image.
-#   - it compiles the dashboard with bun first; this one does not need to,
-#     because the Dockerfile copies the compiled dashboard out of upstream's
-#     published image.
+#   - it compiles the dashboard with bun in a separate job and passes the result
+#     to the image build; this one lets the Dockerfile do it in its own stage,
+#     so a plain `docker build` off a clone produces the same complete panel.
 #
 # ONE-TIME SETUP after the first successful run:
 #   the GHCR package is created private. Make it public so installs work without
@@ -63,8 +63,9 @@ jobs:
                       type=sha,format=short
                       type=raw,value=latest,enable={{is_default_branch}}
 
-            # The Dockerfile lifts the compiled dashboard out of upstream's
-            # published image, so there is no Node toolchain step here.
+            # No bun step here on purpose: the Dockerfile compiles the
+            # dashboard in its own stage, so this workflow and a local
+            # `docker build` produce byte-for-byte the same image.
             - name: Build and push
               uses: docker/build-push-action@v6
               with:

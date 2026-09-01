@@ -50,12 +50,11 @@ test.db
 .AGENT
 graphify-out
 
-# Dashboard: the frontend is prebuilt in CI (build.yml / build-dev.yml) and the
-# compiled output is copied into the context as dashboard/build/. At runtime only
-# the Python integration module and the compiled assets are used (build() never
-# runs because dashboard/build/ already exists), so exclude all source/tooling.
-# Excluding+re-including direct children avoids Docker's "can't re-include a file
-# under an excluded parent directory" limitation.
-dashboard/*
-!dashboard/__init__.py
-!dashboard/build
+# Dashboard: upstream excludes the source here because its CI compiles the
+# frontend beforehand and drops the result into the context. This fork compiles
+# it inside the image instead (the dashboard_src stage in the Dockerfile), so
+# the source has to be in the context - excluding it made the very first COPY of
+# that stage fail. node_modules is already excluded globally above; the compiled
+# output is excluded because a stale local build has no business in the context.
+dashboard/build
+dashboard/.vite

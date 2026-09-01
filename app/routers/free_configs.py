@@ -7,8 +7,10 @@ keeping the diff against upstream small.
 """
 
 import asyncio
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import HTMLResponse
 
 from app.db import AsyncSession, get_db
 from app.free_configs import crud, service, settings as settings_module
@@ -38,6 +40,28 @@ router = APIRouter(
     prefix="/api/free-configs",
     responses={401: responses._401, 403: responses._403},
 )
+
+# The admin page is served separately from the API, without the /api prefix and
+# without an auth dependency: it is a static shell containing no data at all.
+# Every byte it displays is fetched by its own JavaScript from the owner-only
+# endpoints above, using the token the dashboard already holds in localStorage
+# on this same origin. So there is nothing to leak by serving the HTML itself,
+# and nothing to see without an owner's token.
+page_router = APIRouter(tags=["FreeConfigs"], include_in_schema=False)
+
+_PANEL_HTML = Path(__file__).resolve().parent.parent / "free_configs" / "static" / "panel.html"
+
+
+@page_router.get("/free-configs/panel", response_class=HTMLResponse)
+async def free_configs_panel():
+    """The Free Configs admin page, embedded by the dashboard."""
+    try:
+        return HTMLResponse(_PANEL_HTML.read_text(encoding="utf-8"))
+    except OSError:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="The free-configs panel page is missing from this image",
+        )
 
 
 # --------------------------------------------------------------------------- #

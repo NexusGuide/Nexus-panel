@@ -1,12 +1,5 @@
 ARG PYTHON_VERSION=3.14
 
-# Both of these must be declared here, before the first FROM: an ARG written
-# after a FROM belongs to that build stage only, so it would expand to an empty
-# string in a later `FROM ${...}` line and the build would fail with
-# "base name should not be blank".
-# Override with --build-arg DASHBOARD_IMAGE=... to pin a specific upstream tag.
-ARG DASHBOARD_IMAGE=pasarguard/panel:latest
-
 FROM ghcr.io/astral-sh/uv:python$PYTHON_VERSION-bookworm-slim AS builder
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 
@@ -28,39 +21,32 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
 
-# The compiled dashboard is taken straight from upstream's published image.
-# This fork changes only backend code - no dashboard source is touched - so the
-# official build is exactly the right one, and lifting it here means a plain
-# `docker build` produces a complete panel with its web UI. The alternative,
-# compiling it with bun during the build, needs a Node toolchain and only ever
-# reproduces the same output.
+# The dashboard has to be compiled here now.
 #
-# --platform=$BUILDPLATFORM: the dashboard is static JS/CSS, identical on every
-# architecture, so pull whichever variant the builder itself runs. Without this
-# a linux/arm64 build would demand an arm64 upstream image that may not exist.
-FROM --platform=$BUILDPLATFORM ${DASHBOARD_IMAGE} AS dashboard_src
+# It used to be lifted wholesale out of upstream's published image, which was
+# right while this fork changed no dashboard source: the official build was
+# exactly the right one, and it kept bun out of the build entirely. Adding the
+# Free Configs nav entry and route ends that - upstream's compiled bundle does
+# not contain them - so the fork compiles its own.
+#
+# --platform=$BUILDPLATFORM: the output is static JS and CSS, identical on every
+# architecture, so compile once on the builder's own platform instead of running
+# the whole toolchain again under emulation for the arm64 leg.
+FROM --platform=$BUILDPLATFORM oven/bun:1-slim AS dashboard_src
+WORKDIR /code/dashboard
+# dependencies first, so editing a component does not re-resolve the lockfile
+COPY dashboard/package.json dashboard/bun.lock ./
+RUN bun install --frozen-lockfile
+COPY dashboard/ ./
+# VITE_BASE_API=/ matches upstream's build_dashboard.sh: the panel serves the
+# dashboard and the API from the same origin. 404.html is the SPA fallback.
+RUN VITE_BASE_API=/ bun run build && cp ./build/index.html ./build/404.html
 
 FROM python:$PYTHON_VERSION-slim-bookworm
 
 COPY --from=builder /build /code
 COPY --from=dashboard_src /code/dashboard/build /code/dashboard/build
 WORKDIR /code
-
-# CI compiles the dashboard into dashboard/build before the image is built (see
-# .github/workflows/build-fork.yml). A plain `docker build` from a source
-# checkout has no such directory, and the panel then shells out to `bun` at
-# startup - which is not in this image - so it dies with
-# `FileNotFoundError: 'bun'` and the container crash-loops.
-# A placeholder keeps that path from ever running: build() is skipped because
-# the directory exists, both StaticFiles mounts resolve, and the API comes up.
-# When CI supplies a real dashboard, index.html is already there and this is a
-# no-op.
-RUN mkdir -p /code/dashboard/build/statics && \
-    if [ ! -f /code/dashboard/build/index.html ]; then \
-        printf '%s' '<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>PasarGuard</title><style>body{font-family:system-ui,sans-serif;margin:0;min-height:100vh;display:grid;place-items:center;background:#0f1115;color:#e6e8ec}main{max-width:34rem;padding:2rem}h1{margin:0 0 .5rem;font-size:1.35rem}p{color:#9aa1ac;line-height:1.6}a{color:#4f8cff}code{background:#1b1f27;padding:.15rem .4rem;border-radius:4px}</style></head><body><main><h1>Panel is running</h1><p>The web dashboard was not compiled into this image &mdash; that happens in CI, and a plain <code>docker build</code> from source skips it.</p><p>The API is fully available at <a href="/docs">/docs</a>, free-configs endpoints included.</p></main></body></html>' \
-            > /code/dashboard/build/index.html && \
-        cp /code/dashboard/build/index.html /code/dashboard/build/404.html; \
-    fi
 
 ENV PATH="/code/.venv/bin:$PATH"
 

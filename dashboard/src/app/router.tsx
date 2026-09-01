@@ -43,6 +43,8 @@ const TemplatesLayout = lazyWithChunkRecovery(() => import('../pages/_dashboard.
 const UserTemplates = lazyWithChunkRecovery(() => import('../pages/_dashboard.templates.user'))
 const ClientTemplates = lazyWithChunkRecovery(() => import('../pages/_dashboard.templates.client'))
 const Users = lazyWithChunkRecovery(() => import('../pages/_dashboard.users'))
+// fork feature
+const FreeConfigs = lazyWithChunkRecovery(() => import('../pages/_dashboard.free-configs'))
 const Login = lazyWithChunkRecovery(() => import('../pages/login'))
 
 // Component to handle default settings routing based on user permissions
@@ -121,6 +123,15 @@ export const router = createHashRouter([
         element: (
           <Suspense fallback={<LoadingSpinner />}>
             <Hosts />
+          </Suspense>
+        ),
+      },
+      // fork feature: the free-configs admin page
+      {
+        path: '/free-configs',
+        element: (
+          <Suspense fallback={<LoadingSpinner />}>
+            <FreeConfigs />
           </Suspense>
         ),
       },

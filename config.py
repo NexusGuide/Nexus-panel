@@ -148,7 +148,14 @@ class FreeConfigsSettings(EnvSettings):
     max_concurrency: int = Field(default=50, gt=0, validation_alias="FREE_CONFIGS_MAX_CONCURRENCY")
     # 0 = no cap
     max_configs: int = Field(default=0, ge=0, validation_alias="FREE_CONFIGS_MAX_CONFIGS")
-    max_per_subscription: int = Field(default=0, ge=0, validation_alias="FREE_CONFIGS_MAX_PER_SUBSCRIPTION")
+    # How many configs one (address, port) may contribute to the pool. Community
+    # lists carry dozens of near-identical entries per server; they all die
+    # together, so a handful is as useful as thirty. 0 = keep them all.
+    max_per_endpoint: int = Field(default=3, ge=0, validation_alias="FREE_CONFIGS_MAX_PER_ENDPOINT")
+    # A subscription with two thousand entries is unusable in a client, and the
+    # slowest of them are the least likely to work, so serve the fastest slice
+    # by default rather than everything. 0 = no cap.
+    max_per_subscription: int = Field(default=100, ge=0, validation_alias="FREE_CONFIGS_MAX_PER_SUBSCRIPTION")
     # prepended to each free entry's remark so users can tell them apart in their client
     remark_prefix: str = Field(default="🆓", validation_alias="FREE_CONFIGS_REMARK_PREFIX")
 

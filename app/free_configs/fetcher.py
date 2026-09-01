@@ -81,8 +81,8 @@ async def iter_fetched_sources(sources: list[tuple[int | None, str, bool]]):
                     task.cancel()
 
 
-async def check_config(config: ParsedConfig, semaphore: asyncio.Semaphore) -> HealthResult:
-    """TCP-connect to the endpoint and measure how long it took.
+async def check_endpoint(address: str, port: int, semaphore: asyncio.Semaphore) -> int | None:
+    """TCP-connect to one endpoint, returning the latency in ms or None.
 
     A successful connect only proves the port answers - it is not proof that the
     proxy protocol itself works. That caveat is surfaced in the API and docs.
@@ -93,13 +93,12 @@ async def check_config(config: ParsedConfig, semaphore: asyncio.Semaphore) -> He
         writer = None
         try:
             _, writer = await asyncio.wait_for(
-                asyncio.open_connection(config.address, config.port),
+                asyncio.open_connection(address, port),
                 timeout=free_configs_settings.tcp_timeout,
             )
-            latency_ms = int((loop.time() - started) * 1000)
-            return HealthResult(config=config, is_healthy=True, latency_ms=latency_ms)
+            return int((loop.time() - started) * 1000)
         except (asyncio.TimeoutError, OSError, ValueError):
-            return HealthResult(config=config, is_healthy=False)
+            return None
         finally:
             if writer is not None:
                 writer.close()
@@ -107,6 +106,12 @@ async def check_config(config: ParsedConfig, semaphore: asyncio.Semaphore) -> He
                     await writer.wait_closed()
                 except (OSError, asyncio.TimeoutError):
                     pass
+
+
+async def check_config(config: ParsedConfig, semaphore: asyncio.Semaphore) -> HealthResult:
+    """Health-check a single config (kept for tests and one-off checks)."""
+    latency = await check_endpoint(config.address, config.port, semaphore)
+    return HealthResult(config=config, is_healthy=latency is not None, latency_ms=latency)
 
 
 async def iter_checked_batches(configs: list[ParsedConfig], batch_size: int = 500):
@@ -123,7 +128,29 @@ async def iter_checked_batches(configs: list[ParsedConfig], batch_size: int = 50
             yield [HealthResult(config=config, is_healthy=True) for config in configs[start : start + batch_size]]
         return
 
+    # Community lists overlap heavily and one server usually carries many
+    # configs, so the same (address, port) shows up over and over. Probing an
+    # endpoint once and fanning the answer out to every config on it cuts the
+    # work by roughly an order of magnitude - which is what makes it affordable
+    # to check the whole pool instead of an arbitrary slice of it.
+    endpoints = {(config.address, config.port) for config in configs}
+    logger.info("free-configs: %d configs live on %d distinct endpoints", len(configs), len(endpoints))
+
     semaphore = asyncio.Semaphore(free_configs_settings.max_concurrency)
+    latencies: dict[tuple[str, int], int | None] = {}
+    pending = list(endpoints)
+    for start in range(0, len(pending), batch_size):
+        chunk = pending[start : start + batch_size]
+        results = await asyncio.gather(*[check_endpoint(address, port, semaphore) for address, port in chunk])
+        latencies.update(zip(chunk, results))
+
     for start in range(0, len(configs), batch_size):
         batch = configs[start : start + batch_size]
-        yield list(await asyncio.gather(*[check_config(config, semaphore) for config in batch]))
+        yield [
+            HealthResult(
+                config=config,
+                is_healthy=latencies.get((config.address, config.port)) is not None,
+                latency_ms=latencies.get((config.address, config.port)),
+            )
+            for config in batch
+        ]

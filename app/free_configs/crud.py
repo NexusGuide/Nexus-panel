@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Group, users_groups_association
 from app.free_configs.fetcher import HealthResult
 from app.free_configs.models import FreeConfig, FreeConfigGroupAccess, FreeConfigSource
+from config import free_configs_settings
 
 # --------------------------------------------------------------------------- #
 # sources
@@ -99,6 +100,25 @@ async def replace_configs(db: AsyncSession, results: list[HealthResult], source_
     Returns the number of configs stored.
     """
     now = dt.now(UTC)
+
+    # One server often carries dozens of near-identical configs. Serving all of
+    # them pads a subscription with entries that all fail together when that
+    # server goes down, so keep only a few per endpoint - different credentials
+    # or transports on the same host are worth a couple of tries, not thirty.
+    per_endpoint = free_configs_settings.max_per_endpoint
+    if per_endpoint > 0:
+        kept: list[HealthResult] = []
+        seen: dict[tuple[str, int], int] = {}
+        for result in results:
+            if not result.is_healthy:
+                continue
+            key = (result.config.address, result.config.port)
+            if seen.get(key, 0) >= per_endpoint:
+                continue
+            seen[key] = seen.get(key, 0) + 1
+            kept.append(result)
+        results = kept
+
     rows = [
         {
             "uri": result.config.uri,

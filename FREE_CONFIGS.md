@@ -46,17 +46,25 @@ sources (DB)  ──fetch──▶  parse & dedupe  ──TCP health check──
 1. A scheduled job (default: every 24h) fetches every enabled source.
 2. Lines are parsed into `(protocol, address, port)`; unparsable lines are dropped and
    duplicates removed by SHA-256 of the URI.
-3. Each endpoint gets a TCP connect test with a latency measurement, run with bounded
-   concurrency.
-4. The pool is replaced wholesale — entries that vanished upstream stop being served.
-5. On a subscription request, eligible users get the healthy pool appended, fastest first.
+3. Configs are grouped by `(address, port)` and **each endpoint is probed once**, with a
+   latency measurement, under bounded concurrency. Community lists overlap heavily —
+   roughly twelve thousand configs come from an order of magnitude fewer servers — so
+   this is what makes checking the whole pool affordable instead of an arbitrary slice.
+4. At most `MAX_PER_ENDPOINT` configs from any one server are kept, since they all fail
+   together when it goes down.
+5. The pool is replaced wholesale — entries that vanished upstream stop being served.
+6. On a subscription request, eligible users get the fastest `MAX_PER_SUBSCRIPTION` of
+   them appended.
 
 ### Two honest limitations
 
 - **"Healthy" means the port answered a TCP connect from your panel's server.** It does
   not prove the proxy protocol works, and it does not prove the endpoint is reachable
   from your end user's network. If your panel and your users are in different countries,
-  these are very different questions.
+  these are very different questions. In practice the pass rate is high — an endpoint
+  behind Cloudflare answers on 443 whether or not its proxy is alive — so treat the
+  latency ordering, not the healthy flag, as the useful signal. Real verification would
+  mean speaking each protocol with xray-core; that is not implemented here.
 - **Only the `links` and `links_base64` subscription formats get free configs.** Clash,
   sing-box, Xray, Outline and WireGuard describe outbounds field by field and cannot
   carry a foreign URI verbatim. This is the same limitation upstream's own
@@ -154,7 +162,8 @@ FREE_CONFIGS_REFRESH_INTERVAL = 86400
 | `FREE_CONFIGS_TCP_TIMEOUT` | `3` | per-endpoint connect timeout |
 | `FREE_CONFIGS_MAX_CONCURRENCY` | `50` | parallel health checks |
 | `FREE_CONFIGS_MAX_CONFIGS` | `0` | cap on configs checked per refresh (0 = no cap) |
-| `FREE_CONFIGS_MAX_PER_SUBSCRIPTION` | `0` | cap per user subscription (0 = all healthy) |
+| `FREE_CONFIGS_MAX_PER_ENDPOINT` | `3` | how many configs one server may contribute (0 = all) |
+| `FREE_CONFIGS_MAX_PER_SUBSCRIPTION` | `100` | cap per user subscription (0 = all healthy) |
 | `FREE_CONFIGS_REMARK_PREFIX` | `🆓` | label prepended to each free entry |
 
 ### 3. Add sources

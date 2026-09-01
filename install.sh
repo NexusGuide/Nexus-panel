@@ -94,8 +94,13 @@ FREE_CONFIGS_ENABLED=${ENABLE}
 # "all" = every user, "groups" = only members of opted-in groups
 FREE_CONFIGS_MODE=all
 FREE_CONFIGS_REFRESH_INTERVAL=86400
-# 0 = no cap. Raise gradually and watch memory on a small VPS.
-FREE_CONFIGS_MAX_CONFIGS=2000
+# 0 = check every config found. Endpoints are probed once and the answer shared
+# by every config on them, so the whole pool is affordable; set a number here
+# only if a small VPS struggles.
+FREE_CONFIGS_MAX_CONFIGS=0
+# how many configs one server may contribute, and how many go in a subscription
+FREE_CONFIGS_MAX_PER_ENDPOINT=3
+FREE_CONFIGS_MAX_PER_SUBSCRIPTION=100
 FREE_CONFIGS_TCP_TIMEOUT=3
 FREE_CONFIGS_MAX_CONCURRENCY=50
 EOF

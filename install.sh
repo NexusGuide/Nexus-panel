@@ -74,8 +74,26 @@ apply_fork() {
     [ -f "$COMPOSE_FILE" ] || die "no PasarGuard install found at ${COMPOSE_FILE} - run \`install\` first"
 
     info "pointing the compose file at ${IMAGE} ..."
-    # the official installer hardcodes pasarguard/panel:<version>
-    sed -i -E "s|^(\s*image:\s*).*pasarguard/panel:.*$|\1${IMAGE}|" "$COMPOSE_FILE"
+    # A fresh install has upstream's hardcoded pasarguard/panel:<version>, but
+    # re-applying finds whatever a previous apply wrote - so matching only the
+    # upstream name meant you could switch to the fork once and never again
+    # (say, from a local build to the published image).
+    # delimiter is '#', not '|', because the pattern needs '|' for alternation
+    sed -i -E \
+        "s#^([[:space:]]*image:[[:space:]]*)(pasarguard/panel|.*pasarguard-free-configs).*\$#\1${IMAGE}#" \
+        "$COMPOSE_FILE"
+
+    if ! grep -q "$IMAGE" "$COMPOSE_FILE"; then
+        # A custom --image from an earlier run leaves a name we cannot guess.
+        # Fall back to the first service's image line, which is the panel - the
+        # same service every other command in this script talks to.
+        warn "no recognisable panel image line; rewriting the first one instead"
+        awk -v img="$IMAGE" '
+            !done && $1 == "image:" { sub(/image:.*/, "image: " img); done = 1 }
+            { print }
+        ' "$COMPOSE_FILE" > "${COMPOSE_FILE}.tmp" && mv "${COMPOSE_FILE}.tmp" "$COMPOSE_FILE"
+    fi
+
     if ! grep -q "$IMAGE" "$COMPOSE_FILE"; then
         die "could not rewrite the image line in ${COMPOSE_FILE} - check it by hand"
     fi

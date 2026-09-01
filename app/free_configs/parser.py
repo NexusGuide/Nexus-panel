@@ -23,6 +23,28 @@ SUPPORTED_SCHEMES = (
 )
 
 
+def _strip_remark(uri: str) -> str:
+    """Return the URI with its display name removed, for identity comparison.
+
+    Two forms carry a name: everything except vmess puts it in the fragment
+    after ``#``; vmess hides it in the ``ps`` field of its base64 JSON body.
+    Anything unparsable is returned unchanged - a config we cannot normalise
+    should still be usable, just deduplicated less well.
+    """
+    uri = uri.strip()
+    if uri.lower().startswith("vmess://"):
+        try:
+            payload = json.loads(_b64decode(uri[8:]))
+            if not isinstance(payload, dict):
+                return uri
+            payload.pop("ps", None)
+            payload.pop("remarks", None)
+            return "vmess://" + json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        except Exception:  # noqa: BLE001 - identity is best-effort, never fatal
+            return uri
+    return uri.split("#", 1)[0]
+
+
 # slots matter here: a refresh can hold tens of thousands of these at once,
 # and dropping the per-instance __dict__ cuts that memory roughly in half.
 @dataclass(frozen=True, slots=True)
@@ -34,7 +56,15 @@ class ParsedConfig:
 
     @property
     def uri_hash(self) -> str:
-        return hashlib.sha256(self.uri.encode("utf-8")).hexdigest()
+        """Identity of the proxy itself, ignoring whatever it happens to be called.
+
+        The same server is republished across community lists under a dozen
+        different remarks. Hashing the whole URI made each of those a separate
+        config, so a subscription opened with several byte-identical entries
+        that differed only in their label. Hashing the URI *without* its name
+        collapses them into one.
+        """
+        return hashlib.sha256(_strip_remark(self.uri).encode("utf-8")).hexdigest()
 
 
 def _b64decode(data: str) -> str:

@@ -87,6 +87,11 @@ async def record_fetch_outcome(
 
 INSERT_CHUNK_SIZE = 500
 
+# Longest IN (...) list the fork will build in one statement. SQLite before
+# 3.32 allowed only 999 bound parameters, and every driver has some ceiling;
+# staying well under all of them costs nothing.
+IN_CHUNK_SIZE = 500
+
 
 async def replace_configs(db: AsyncSession, results: list[HealthResult], source_ids: dict[str, int | None]) -> int:
     """Swap the pool for a freshly harvested one.
@@ -290,19 +295,30 @@ async def set_overrides_bulk(db: AsyncSession, uri_hashes: list[str], is_enabled
     if not wanted:
         return 0
 
-    existing = {
-        row.uri_hash: row
-        for row in (
-            await db.execute(select(FreeConfigOverride).where(FreeConfigOverride.uri_hash.in_(wanted)))
+    # chunked for the same reason: this list comes from a selection in the UI
+    # and can be thousands long
+    existing = {}
+    for start in range(0, len(wanted), IN_CHUNK_SIZE):
+        rows = (
+            await db.execute(
+                select(FreeConfigOverride).where(
+                    FreeConfigOverride.uri_hash.in_(wanted[start : start + IN_CHUNK_SIZE])
+                )
+            )
         ).scalars().all()
-    }
+        existing.update({row.uri_hash: row for row in rows})
     for uri_hash in wanted:
         if uri_hash in existing:
             existing[uri_hash].is_enabled = is_enabled
         else:
             db.add(FreeConfigOverride(uri_hash=uri_hash, is_enabled=is_enabled))
 
-    await db.execute(update(FreeConfig).where(FreeConfig.uri_hash.in_(wanted)).values(is_enabled=is_enabled))
+    for start in range(0, len(wanted), IN_CHUNK_SIZE):
+        await db.execute(
+            update(FreeConfig)
+            .where(FreeConfig.uri_hash.in_(wanted[start : start + IN_CHUNK_SIZE]))
+            .values(is_enabled=is_enabled)
+        )
     await db.commit()
     return len(wanted)
 
@@ -499,13 +515,16 @@ async def remove_group_assignments(db: AsyncSession, group_id: int, uri_hashes: 
     wanted = [h for h in dict.fromkeys(uri_hashes) if h]
     if not wanted:
         return 0
-    result = await db.execute(
-        delete(FreeConfigGroupConfig)
-        .where(FreeConfigGroupConfig.group_id == group_id)
-        .where(FreeConfigGroupConfig.uri_hash.in_(wanted))
-    )
+    removed = 0
+    for start in range(0, len(wanted), IN_CHUNK_SIZE):
+        result = await db.execute(
+            delete(FreeConfigGroupConfig)
+            .where(FreeConfigGroupConfig.group_id == group_id)
+            .where(FreeConfigGroupConfig.uri_hash.in_(wanted[start : start + IN_CHUNK_SIZE]))
+        )
+        removed += result.rowcount or 0
     await db.commit()
-    return result.rowcount or 0
+    return removed
 
 
 async def get_configs_for_groups(db: AsyncSession, group_ids: list[int], limit: int = 0) -> list[tuple[str, str | None]]:
@@ -524,15 +543,19 @@ async def get_configs_for_groups(db: AsyncSession, group_ids: list[int], limit: 
         # at least one of the user's groups is "everything"
         return await get_healthy_configs(db, limit=limit)
 
-    hash_stmt = select(FreeConfigGroupConfig.uri_hash).where(FreeConfigGroupConfig.group_id.in_(group_ids)).distinct()
-    hashes = list((await db.execute(hash_stmt)).scalars().all())
-    if not hashes:
-        return []
+    # A subquery, not a fetched list of hashes fed back in as bind parameters.
+    # This runs on the subscription hot path and a group can hold thousands of
+    # configs: materialising them would send one parameter per config on every
+    # request, which is slow everywhere and runs into the bound-parameter limit
+    # on an older SQLite. This way only the group ids are bound.
+    assigned_hashes = (
+        select(FreeConfigGroupConfig.uri_hash).where(FreeConfigGroupConfig.group_id.in_(group_ids)).distinct()
+    )
 
     stmt = (
         select(FreeConfig.uri, FreeConfigOverride.remark)
         .outerjoin(FreeConfigOverride, FreeConfigOverride.uri_hash == FreeConfig.uri_hash)
-        .where(FreeConfig.uri_hash.in_(hashes))
+        .where(FreeConfig.uri_hash.in_(assigned_hashes))
         .where(FreeConfig.is_enabled.is_(True))
         .where(or_(FreeConfig.is_healthy.is_(True), FreeConfig.is_manual.is_(True)))
         .order_by(

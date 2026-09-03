@@ -122,6 +122,14 @@ nexus cli generate-temp-key
 
 Enter the key it prints on the dashboard login page.
 
+## Releasing
+
+Bump the version in `app/version.py`, `pyproject.toml`, `dashboard/package.json` and
+`uv.lock` — all four, or the Docker build fails on a lock mismatch — and push. Changing
+`app/version.py` on `main` publishes a GitHub Release automatically, and that Release is
+what running panels compare themselves against: the update banner reads the Releases
+API, so a version that is never released is a version nobody is told about.
+
 ## Running from source
 
 ```bash

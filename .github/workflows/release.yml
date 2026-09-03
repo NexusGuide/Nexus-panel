@@ -1,0 +1,72 @@
+# Publishes a GitHub Release whenever the version in app/version.py changes.
+#
+# The panel's update banner asks the Releases API what the newest version is.
+# Tags and commits are invisible to it - only a published Release counts - so
+# without this, every panel in the world reports "up to date" forever no matter
+# how many versions ship.
+#
+# Keyed on the version file rather than on a tag being pushed by hand: the
+# version bump is the thing that actually decides a release exists, and tying
+# them together means the two can never drift apart.
+
+name: Release
+
+on:
+    push:
+        branches: [main]
+        paths:
+            - "app/version.py"
+    workflow_dispatch:
+
+permissions:
+    contents: write
+
+jobs:
+    release:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Read the version
+              id: version
+              run: |
+                  version="$(grep -oP '(?<=^__version__ = ")[^"]+' app/version.py)"
+                  if [ -z "$version" ]; then
+                      echo "could not read __version__ from app/version.py" >&2
+                      exit 1
+                  fi
+                  echo "version=${version}" >> "$GITHUB_OUTPUT"
+                  echo "tag=v${version}" >> "$GITHUB_OUTPUT"
+
+            - name: Skip if this version was already released
+              id: check
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  TAG: ${{ steps.version.outputs.tag }}
+              run: |
+                  # workflow_dispatch and an edit that touches the file without
+                  # changing the number both re-run this job; releasing twice
+                  # would fail the build for no reason.
+                  if gh release view "$TAG" >/dev/null 2>&1; then
+                      echo "exists=true" >> "$GITHUB_OUTPUT"
+                      echo "${TAG} is already released - nothing to do"
+                  else
+                      echo "exists=false" >> "$GITHUB_OUTPUT"
+                  fi
+
+            - name: Publish
+              if: steps.check.outputs.exists == 'false'
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  TAG: ${{ steps.version.outputs.tag }}
+                  VERSION: ${{ steps.version.outputs.version }}
+              run: |
+                  gh release create "$TAG" \
+                      --title "$VERSION" \
+                      --generate-notes \
+                      --target "$GITHUB_SHA"
+                  echo "### Released ${TAG}" >> "$GITHUB_STEP_SUMMARY"
+                  echo "Panels running an older version will now offer the update." >> "$GITHUB_STEP_SUMMARY"

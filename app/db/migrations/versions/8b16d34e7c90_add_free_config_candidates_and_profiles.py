@@ -44,7 +44,17 @@ def upgrade() -> None:
         "free_config_profiles",
         sa.Column("id", sa.BigInteger().with_variant(sa.Integer(), "sqlite"), autoincrement=True, nullable=False),
         sa.Column("name", sa.String(length=128), nullable=False),
-        sa.Column("fields", sa.Text(), nullable=False, server_default="{}"),
+        # No server_default here, unlike the VARCHAR columns beside it: MySQL
+        # refuses one on a TEXT column outright (error 1101, "BLOB, TEXT,
+        # GEOMETRY or JSON column can't have a default value"), so a fresh
+        # MySQL install could not run this migration at all. MariaDB, SQLite
+        # and PostgreSQL all accept it, which is why four of the five backends
+        # were green and this went unnoticed.
+        #
+        # Nothing is lost: the model carries default="{}", so every row written
+        # through it gets the empty object, and the API never inserts a profile
+        # without one.
+        sa.Column("fields", sa.Text(), nullable=False),
         sa.Column("remark", sa.String(length=256), nullable=False, server_default=""),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("id"),

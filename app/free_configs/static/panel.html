@@ -86,6 +86,8 @@
 <h2 data-i18n="title">Free Configs</h2>
 <div class="sub" id="subtitle">Community proxies harvested, checked, and appended to subscriptions.</div>
 
+<div class="sub" id="lastrun" hidden></div>
+
 <div class="cards" id="stats"></div>
 
 <div class="tabs" role="tablist">
@@ -434,6 +436,16 @@
       'prof.skipped': '{n} skipped',
       'action.edit': 'Edit',
       'action.delete': 'Delete',
+      'run.lead': 'Last rebuild:',
+      'run.sources': '{n} sources', 'run.fetched': '{n} fetched', 'run.unique': '{n} unique',
+      'run.candidates': '{n} waiting to choose', 'run.took': 'took {n}s', 'run.errors': '{n} source(s) failed',
+      'run.started': 'Rebuilding - fetching every source and checking every endpoint. This takes a minute.',
+      'run.alreadyRunning': 'A rebuild is already running - waiting for it to finish',
+      'run.done': 'Rebuild finished - {n} new configs are waiting in Candidates',
+      'run.nothingNew': 'Rebuild finished, but nothing new: everything reachable is already in the pool',
+      'run.noSources': 'No sources are switched on, so there was nothing to fetch. Add one on the Sources tab.',
+      'run.finished': 'Rebuild finished',
+      'run.stillRunning': 'The rebuild is still going after ten minutes. Check the panel logs.',
       'stat.inPool': 'In pool', 'stat.reachable': 'Reachable', 'stat.off': 'Switched off',
       'stat.manual': 'Added by hand', 'stat.waiting': 'Waiting to choose', 'stat.perSub': 'Per subscription',
       'toast.saved': 'Saved', 'toast.deleted': 'Deleted', 'toast.nothingSelected': 'Nothing selected',
@@ -492,6 +504,17 @@
       'prof.wrongProtocol': '{n} دست‌نخورده ماند (پروتکل دیگر)',
       'prof.skipped': '{n} رد شد',
       'action.edit': 'ویرایش', 'action.delete': 'حذف',
+      'run.lead': 'آخرین بازسازی:',
+      'run.sources': '{n} منبع', 'run.fetched': '{n} گرفته‌شده', 'run.unique': '{n} یکتا',
+      'run.candidates': '{n} در انتظار انتخاب', 'run.took': '{n} ثانیه طول کشید',
+      'run.errors': '{n} منبع خطا داد',
+      'run.started': 'در حال بازسازی — همه‌ی منابع گرفته و همه‌ی مقصدها بررسی می‌شوند. حدود یک دقیقه طول می‌کشد.',
+      'run.alreadyRunning': 'یک بازسازی از قبل در جریان است — منتظر پایانش می‌مانیم',
+      'run.done': 'بازسازی تمام شد — {n} کانفیگ تازه در تب کاندیداها منتظر است',
+      'run.nothingNew': 'بازسازی تمام شد، ولی چیز تازه‌ای نبود: هرچه در دسترس بود از قبل در استخر است',
+      'run.noSources': 'هیچ منبعی روشن نیست، پس چیزی برای گرفتن نبود. از تب منابع یکی اضافه کن.',
+      'run.finished': 'بازسازی تمام شد',
+      'run.stillRunning': 'بازسازی بعد از ده دقیقه هنوز تمام نشده. لاگ پنل را ببین.',
       'field.address': 'آدرس (سرور یا آی‌پی CDN)', 'field.port': 'پورت', 'field.sni': 'SNI',
       'field.host': 'هدر Host', 'field.path': 'مسیر (path)', 'field.type': 'ترنسپورت (شبکه)',
       'field.net': 'ترنسپورت (شبکه)', 'field.headerType': 'نوع هدر', 'field.tls': 'TLS',
@@ -565,6 +588,17 @@
       'prof.wrongProtocol': 'не тронуто: {n} (другой протокол)',
       'prof.skipped': 'пропущено: {n}',
       'action.edit': 'Изменить', 'action.delete': 'Удалить',
+      'run.lead': 'Последняя перестройка:',
+      'run.sources': 'источников: {n}', 'run.fetched': 'получено: {n}', 'run.unique': 'уникальных: {n}',
+      'run.candidates': 'ждут выбора: {n}', 'run.took': 'заняло {n} с',
+      'run.errors': 'источников с ошибкой: {n}',
+      'run.started': 'Перестройка — загружаем все источники и проверяем все адреса. Это займёт около минуты.',
+      'run.alreadyRunning': 'Перестройка уже идёт — ждём её окончания',
+      'run.done': 'Перестройка завершена — во вкладке «Кандидаты» ждут новые конфиги: {n}',
+      'run.nothingNew': 'Перестройка завершена, но нового нет: всё доступное уже в пуле',
+      'run.noSources': 'Ни один источник не включён, загружать было нечего. Добавьте его во вкладке «Источники».',
+      'run.finished': 'Перестройка завершена',
+      'run.stillRunning': 'Перестройка идёт уже десять минут. Посмотрите логи панели.',
       'field.address': 'Адрес (сервер или IP CDN)', 'field.port': 'Порт', 'field.sni': 'SNI',
       'field.host': 'Заголовок Host', 'field.path': 'Путь', 'field.type': 'Транспорт (сеть)',
       'field.net': 'Транспорт (сеть)', 'field.headerType': 'Тип заголовка', 'field.tls': 'TLS',
@@ -638,6 +672,17 @@
       'prof.wrongProtocol': '{n} 个未改动（其他协议）',
       'prof.skipped': '跳过 {n} 个',
       'action.edit': '编辑', 'action.delete': '删除',
+      'run.lead': '上次重建：',
+      'run.sources': '{n} 个订阅源', 'run.fetched': '获取 {n} 条', 'run.unique': '去重后 {n} 条',
+      'run.candidates': '{n} 条待选', 'run.took': '耗时 {n} 秒',
+      'run.errors': '{n} 个源出错',
+      'run.started': '正在重建 —— 抓取所有订阅源并检测所有节点，大约需要一分钟。',
+      'run.alreadyRunning': '已有一次重建在进行 —— 正在等待它完成',
+      'run.done': '重建完成 —— 候选标签页中有 {n} 条新配置等待选择',
+      'run.nothingNew': '重建完成，但没有新内容：可用的都已在池中',
+      'run.noSources': '没有启用任何订阅源，所以没有内容可抓取。请到「订阅源」标签页添加。',
+      'run.finished': '重建完成',
+      'run.stillRunning': '重建已经进行十分钟仍未结束，请查看面板日志。',
       'field.address': '地址（服务器或 CDN IP）', 'field.port': '端口', 'field.sni': 'SNI',
       'field.host': 'Host 头', 'field.path': '路径', 'field.type': '传输方式（网络）',
       'field.net': '传输方式（网络）', 'field.headerType': '伪装类型', 'field.tls': 'TLS',
@@ -739,6 +784,34 @@
     const badge = document.getElementById('candBadge');
     badge.textContent = s.candidates_waiting || '';
     badge.hidden = !s.candidates_waiting;
+
+    renderLastRun(s);
+    return s;
+  }
+
+  // What the last rebuild actually did. Without this the only thing a silent
+  // run leaves behind is an unchanged pool, which is indistinguishable from a
+  // rebuild that never started - and that is exactly how it was read.
+  function renderLastRun(s) {
+    const line = document.getElementById('lastrun');
+    const stats = s.last_stats;
+    if (!stats) { line.hidden = true; return; }
+    const parts = [
+      t('run.sources').replace('{n}', stats.sources),
+      t('run.fetched').replace('{n}', stats.fetched),
+      t('run.unique').replace('{n}', stats.unique),
+      t('run.candidates').replace('{n}', stats.candidates),
+      t('run.took').replace('{n}', stats.duration_seconds),
+    ];
+    line.textContent = t('run.lead') + ' ' + parts.join(' · ');
+    if (stats.errors && stats.errors.length) {
+      // Name the first one. A source that 404s or times out is the usual reason
+      // a rebuild comes back with nothing, and burying it in a count helps
+      // nobody find it.
+      line.textContent += ' — ' + t('run.errors').replace('{n}', stats.errors.length)
+        + ': ' + (stats.errors[0].url || '') + ' ' + (stats.errors[0].error || '');
+    }
+    line.hidden = false;
   }
 
   // ---------------------------------------------------------------- pool
@@ -898,13 +971,50 @@
     } catch (err) { toast(err.message); }
   };
 
+  // A rebuild fetches every source and TCP-checks thousands of endpoints; a
+  // real run takes the better part of a minute. Looking once, four seconds in,
+  // always found it still running and never looked again - so a rebuild that
+  // worked perfectly well looked like one that had done nothing at all. Follow
+  // it to the end instead, and say what it found.
   document.getElementById('rebuild').onclick = async () => {
+    const button = document.getElementById('rebuild');
     try {
-      await api('/refresh', { method: 'POST' });
-      toast('Rebuilding - this fetches every source and checks every endpoint');
-      setTimeout(() => { loadStatus(); loadPool(); }, 4000);
-    } catch (err) { toast(err.message); }
+      const started = await api('/refresh', { method: 'POST' });
+      button.disabled = true;
+      toast(started.detail && /already/i.test(started.detail) ? t('run.alreadyRunning') : t('run.started'));
+      await followRebuild();
+    } catch (err) {
+      toast(err.message);
+      button.disabled = false;
+    }
   };
+
+  async function followRebuild() {
+    // Ten minutes at three-second intervals. A run that has not finished by
+    // then is stuck, and saying so beats polling until the tab is closed.
+    const deadline = Date.now() + 10 * 60 * 1000;
+    let seenRunning = false;
+    while (Date.now() < deadline) {
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      let status;
+      try { status = await loadStatus(); } catch (err) { continue; }
+      if (status.running) { seenRunning = true; continue; }
+      // Not running. On the first poll that can also mean it finished between
+      // our request and this check, which is fine - the numbers below are the
+      // run's own, either way.
+      await Promise.all([loadPool().catch(() => {}), loadCandidates().catch(() => {})]);
+      const stats = status.last_stats;
+      if (stats && stats.sources === 0) toast(t('run.noSources'));
+      else if (stats && !stats.candidates && stats.fetched) toast(t('run.nothingNew'));
+      else if (stats) toast(t('run.done').replace('{n}', stats.candidates));
+      else toast(t('run.finished'));
+      document.getElementById('rebuild').disabled = false;
+      return;
+    }
+    toast(t('run.stillRunning'));
+    document.getElementById('rebuild').disabled = false;
+    void seenRunning;
+  }
 
   let searchTimer;
   document.getElementById('q').addEventListener('input', () => {

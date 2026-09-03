@@ -586,6 +586,7 @@ cmd_migrate() {
     fi
     write_compose
     record_database
+    normalise_database_port
     refresh_env_settings
 
     pull_and_up
@@ -593,6 +594,26 @@ cmd_migrate() {
     install_command
     summary
     warn "the old install is still at ${LEGACY_DIR} - remove it once you are happy."
+}
+
+normalise_database_port() {
+    # The install we are adopting could have a connection pooler (pgbouncer)
+    # between the panel and the database, and its url points at the pooler's
+    # port. This stack has no pooler, so that port answers nothing and the panel
+    # crash-loops on ECONNREFUSED. Point the url at the database itself.
+    local want=""
+    case "$DATABASE" in
+        postgresql|timescaledb) want=5432 ;;
+        mysql|mariadb)          want=3306 ;;
+        *) return ;;
+    esac
+    [ -f "$ENV_FILE" ] || return
+    local before after
+    before="$(grep -E '^SQLALCHEMY_DATABASE_URL' "$ENV_FILE" || true)"
+    sed -i -E "s#^(SQLALCHEMY_DATABASE_URL[[:space:]]*=[[:space:]]*\"?[^\"]*@(127\\.0\\.0\\.1|localhost)):[0-9]+/#\\1:${want}/#" "$ENV_FILE"
+    after="$(grep -E '^SQLALCHEMY_DATABASE_URL' "$ENV_FILE" || true)"
+    [ "$before" != "$after" ] && info "pointed the database url at port ${want}"
+    return 0
 }
 
 detect_legacy_database() {
@@ -812,7 +833,10 @@ main() {
         uninstall)    cmd_uninstall ;;
         logs)         require_installed; compose logs --tail=200 "${rest[@]+"${rest[@]}"}" ;;
         status)       require_installed; compose ps ;;
-        restart)      require_root; require_installed; compose restart ;;
+        # recreate rather than restart: a container keeps the environment it
+        # was created with, so a plain restart after `nexus edit-env` looks
+        # like it worked and changes nothing
+        restart)      require_root; require_installed; compose up -d --force-recreate ;;
         start)        require_root; require_installed; compose up -d ;;
         stop)         require_root; require_installed; compose down ;;
         cli)          require_installed; panel_exec python /code/nexus-cli.py "${rest[@]+"${rest[@]}"}" ;;

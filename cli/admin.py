@@ -12,9 +12,11 @@ from cli import console
 async def _generate_temp_key():
     async with GetDB() as db:
         key = await create_temp_key(db)
-        console.print(f"[bold green]Temp key:[/bold green] {key.key}")
-        console.print(f"[yellow]Expires at:[/yellow] {key.expires_at.strftime('%Y-%m-%d %H:%M:%S UTC')}")
-        console.print("[dim]This key is valid for 5 minutes and can only be used once.[/dim]")
+        # The key is the one thing being read off the screen and typed into a
+        # browser, so it gets the loud colour; everything around it is context.
+        console.print(f"Temp key: [bold yellow]{key.key}[/bold yellow]")
+        console.print(f"[dim]Expires at {key.expires_at.strftime('%Y-%m-%d %H:%M:%S UTC')} - "
+                      f"valid for 5 minutes, single use.[/dim]")
 
 
 def generate_temp_key():

@@ -1,7 +1,6 @@
-"""
-PasarGuard CLI Package
+"""Nexus Panel CLI package.
 
-A modern, type-safe CLI built with Typer for managing PasarGuard instances.
+A type-safe CLI built with Typer for managing a Nexus Panel instance.
 """
 
 from pydantic import ValidationError

@@ -90,8 +90,10 @@
 
 <div class="tabs" role="tablist">
   <button role="tab" aria-selected="true" data-tab="pool">Pool</button>
+  <button role="tab" aria-selected="false" data-tab="candidates">Candidates <span id="candBadge" class="pill" hidden></span></button>
   <button role="tab" aria-selected="false" data-tab="groups">Groups</button>
   <button role="tab" aria-selected="false" data-tab="sources">Sources</button>
+  <button role="tab" aria-selected="false" data-tab="profiles">Profiles</button>
   <button role="tab" aria-selected="false" data-tab="settings">Settings</button>
 </div>
 
@@ -124,6 +126,9 @@
     <select id="bulkGroup" style="min-width:150px"></select>
     <button id="bulkAssign" disabled>Add to group</button>
     <button id="bulkUnassign" disabled>Remove from group</button>
+    <span class="muted" style="margin-inline-start:8px">Profile:</span>
+    <select id="poolProfile" style="min-width:150px"><option value="">Apply profile...</option></select>
+    <button id="applyProfile" disabled>Apply to selected</button>
   </div>
 
   <div class="wrap">
@@ -187,6 +192,69 @@
       <thead><tr><th>On</th><th>Name</th><th>URL</th><th>Last fetch</th><th>Count</th><th>Error</th><th></th></tr></thead>
       <tbody id="srcRows"></tbody>
     </table>
+  </div>
+</section>
+
+<section id="tab-candidates" hidden>
+  <p class="hint" style="margin-bottom:10px">
+    What the last rebuild found. Nothing here is being served: the pool changes only when you
+    move something across, so a bad rebuild can never take a working pool away from you.
+  </p>
+  <div class="row" style="margin-bottom:10px">
+    <input class="grow" id="candQ" type="search" placeholder="Search address or URI...">
+    <select id="candProto"><option value="">All protocols</option></select>
+    <button id="candReload">Reload</button>
+  </div>
+  <div class="row" style="margin-bottom:10px">
+    <span id="candCount" class="muted">0 selected</span>
+    <button id="candAdd" class="primary">Add selected to pool</button>
+    <button id="candDrop">Discard selected</button>
+    <span style="flex:1"></span>
+    <button id="candAddAll">Add all</button>
+    <button id="candDropAll">Discard all</button>
+  </div>
+  <div class="wrap">
+    <table>
+      <thead><tr>
+        <th><input type="checkbox" id="candAll"></th>
+        <th>Protocol</th><th>Address</th><th>SNI / Host</th><th>Port</th><th>Latency</th><th>URI</th>
+      </tr></thead>
+      <tbody id="candRows"></tbody>
+    </table>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <button id="candPrev">Previous</button>
+    <span id="candPage" class="muted"></span>
+    <button id="candNext">Next</button>
+  </div>
+</section>
+
+<section id="tab-profiles" hidden>
+  <p class="hint" style="margin-bottom:10px">
+    A profile is a set of values stamped onto configs you choose - an address to front them with,
+    a working SNI, a fingerprint. Leave a field empty and that field is left exactly as the config
+    already had it.
+  </p>
+  <div class="row" style="margin-bottom:10px">
+    <input id="profName" placeholder="Profile name" style="width:200px">
+    <input class="grow" id="profNote" placeholder="What is it for? (optional)">
+    <button id="profNew" class="primary">New profile</button>
+  </div>
+  <div class="wrap">
+    <table>
+      <thead><tr><th>Name</th><th>Note</th><th>Sets</th><th></th></tr></thead>
+      <tbody id="profRows"></tbody>
+    </table>
+  </div>
+
+  <div id="profEditor" hidden style="margin-top:16px">
+    <h3 id="profEditorTitle" style="margin:0 0 8px"></h3>
+    <div class="grid2" id="profFields"></div>
+    <div class="row" style="margin-top:12px">
+      <button id="profSave" class="primary">Save profile</button>
+      <button id="profClose">Close</button>
+      <span id="profHint" class="muted"></span>
+    </div>
   </div>
 </section>
 
@@ -312,7 +380,8 @@
       ['Reachable', s.pool_healthy],
       ['Switched off', s.pool_disabled],
       ['Added by hand', s.pool_manual],
-      ['Per subscription', (s.last_stats ? '' : '') + (state.settings ? state.settings.effective.max_per_subscription || 'all' : '-')],
+      ['Waiting to choose', s.candidates_waiting || 0],
+      ['Per subscription', (state.settings ? state.settings.effective.max_per_subscription || 'all' : '-')],
     ].map(([k, v]) => `<div class="card"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`).join('');
 
     const when = s.pool_last_checked_at ? new Date(s.pool_last_checked_at).toLocaleString() : 'never';
@@ -320,6 +389,11 @@
       `${s.enabled ? 'Active' : 'Switched off'} · mode "${s.mode}" · last checked ${when}` +
       (s.running ? ' · a rebuild is running' : '');
     document.getElementById('rebuild').disabled = !!s.running;
+
+    // the tab badge is the only nudge that a rebuild produced something to look at
+    const badge = document.getElementById('candBadge');
+    badge.textContent = s.candidates_waiting || '';
+    badge.hidden = !s.candidates_waiting;
   }
 
   // ---------------------------------------------------------------- pool
@@ -396,6 +470,7 @@
   function updateSelectionUI() {
     document.getElementById('selcount').textContent = state.selected.size + ' selected';
     const none = state.selected.size === 0;
+    document.getElementById('applyProfile').disabled = none;
     document.getElementById('bulkOn').disabled = none;
     document.getElementById('bulkOff').disabled = none;
     document.getElementById('bulkAssign').disabled = none;
@@ -909,16 +984,259 @@
     } finally { button.disabled = false; }
   };
 
+
+  // ---------------------------------------------------------------- candidates
+  //
+  // The tray a rebuild fills. Nothing here is served; the pool changes only when
+  // the owner moves something across, which is what makes a bad rebuild
+  // survivable - the worst it can do is fill this list with rubbish.
+
+  const cand = { offset: 0, limit: 100, total: 0, selected: new Set() };
+
+  function candSelectionPayload() {
+    // An empty list means "all of them" to the API. Sending every hash for a
+    // tray of tens of thousands would be a megabyte of request body for no gain.
+    return { uri_hashes: [...cand.selected] };
+  }
+
+  function renderCandidates(items) {
+    const body = document.getElementById('candRows');
+    if (!items.length) {
+      body.innerHTML = `<tr><td colspan="7" class="empty">Nothing waiting. Press "Rebuild pool" to look for configs.</td></tr>`;
+      return;
+    }
+    body.innerHTML = items.map(c => `
+      <tr>
+        <td><input type="checkbox" class="candpick" data-hash="${esc(c.uri_hash)}" ${cand.selected.has(c.uri_hash) ? 'checked' : ''}></td>
+        <td>${esc(c.protocol)}</td>
+        <td>${esc(c.address)}</td>
+        <td class="uri" title="${esc(sniOf(c.uri))}">${esc(sniOf(c.uri) || '-')}</td>
+        <td>${esc(c.port)}</td>
+        <td>${c.latency_ms == null ? '<span class="muted">-</span>' : esc(c.latency_ms) + ' ms'}</td>
+        <td class="uri" title="${esc(c.uri)}">${esc(c.uri)}</td>
+      </tr>`).join('');
+  }
+
+  function updateCandCount() {
+    document.getElementById('candCount').textContent = `${cand.selected.size} selected`;
+  }
+
+  async function loadCandidates() {
+    const params = new URLSearchParams({
+      offset: cand.offset,
+      limit: cand.limit,
+      search: document.getElementById('candQ').value.trim(),
+      protocol: document.getElementById('candProto').value,
+    });
+    const page = await api('/candidates?' + params);
+    cand.total = page.total;
+    renderCandidates(page.items);
+    const from = page.total ? cand.offset + 1 : 0;
+    document.getElementById('candPage').textContent = `${from}-${Math.min(cand.offset + cand.limit, page.total)} of ${page.total}`;
+    document.getElementById('candPrev').disabled = cand.offset === 0;
+    document.getElementById('candNext').disabled = cand.offset + cand.limit >= page.total;
+    updateCandCount();
+  }
+
+  document.getElementById('candRows').addEventListener('change', e => {
+    if (!e.target.classList.contains('candpick')) return;
+    const hash = e.target.dataset.hash;
+    if (e.target.checked) cand.selected.add(hash); else cand.selected.delete(hash);
+    updateCandCount();
+  });
+
+  document.getElementById('candAll').onchange = e => {
+    document.querySelectorAll('.candpick').forEach(box => {
+      box.checked = e.target.checked;
+      if (e.target.checked) cand.selected.add(box.dataset.hash); else cand.selected.delete(box.dataset.hash);
+    });
+    updateCandCount();
+  };
+
+  let candSearchTimer = null;
+  document.getElementById('candQ').oninput = () => {
+    clearTimeout(candSearchTimer);
+    candSearchTimer = setTimeout(() => { cand.offset = 0; loadCandidates().catch(e => toast(e.message)); }, 300);
+  };
+  document.getElementById('candProto').onchange = () => { cand.offset = 0; loadCandidates().catch(e => toast(e.message)); };
+  document.getElementById('candReload').onclick = () => loadCandidates().catch(e => toast(e.message));
+  document.getElementById('candPrev').onclick = () => { cand.offset = Math.max(0, cand.offset - cand.limit); loadCandidates().catch(e => toast(e.message)); };
+  document.getElementById('candNext').onclick = () => { cand.offset += cand.limit; loadCandidates().catch(e => toast(e.message)); };
+
+  async function candAction(path, payload, done) {
+    try {
+      const result = await api(path, { method: 'POST', body: JSON.stringify(payload) });
+      cand.selected.clear();
+      cand.offset = 0;
+      toast(done(result));
+      await Promise.all([loadCandidates(), loadPool(), loadStatus()]);
+    } catch (err) { toast(err.message); }
+  }
+
+  document.getElementById('candAdd').onclick = () => {
+    if (!cand.selected.size) return toast('Nothing selected');
+    candAction('/candidates/promote', candSelectionPayload(), r => `${r.promoted} added to the pool`);
+  };
+  document.getElementById('candDrop').onclick = () => {
+    if (!cand.selected.size) return toast('Nothing selected');
+    candAction('/candidates/discard', candSelectionPayload(), r => `${r.discarded} discarded`);
+  };
+  document.getElementById('candAddAll').onclick = () => {
+    if (!confirm(`Add all ${cand.total} candidates to the pool?`)) return;
+    candAction('/candidates/promote', { uri_hashes: [] }, r => `${r.promoted} added to the pool`);
+  };
+  document.getElementById('candDropAll').onclick = () => {
+    if (!confirm(`Discard all ${cand.total} candidates?`)) return;
+    candAction('/candidates/discard', { uri_hashes: [] }, r => `${r.discarded} discarded`);
+  };
+
+  // ---------------------------------------------------------------- profiles
+
+  const prof = { editing: null, list: [] };
+
+  // The fields a profile may set. Deliberately the same vocabulary the per-config
+  // editor uses, so a profile can do exactly what a person could do by hand on
+  // one config - and nothing it could not.
+  const PROFILE_FIELDS = [
+    ['address', 'Address (server or CDN IP)'],
+    ['sni', 'SNI'],
+    ['host', 'Host header'],
+    ['path', 'Path'],
+    ['type', 'Transport (ws, grpc, tcp...)'],
+    ['security', 'Security (tls, reality, none)'],
+    ['fp', 'Fingerprint'],
+    ['alpn', 'ALPN'],
+    ['port', 'Port'],
+    ['flow', 'Flow'],
+    ['headerType', 'Header type'],
+    ['serviceName', 'gRPC service name'],
+  ];
+
+  function renderProfiles() {
+    const body = document.getElementById('profRows');
+    if (!prof.list.length) {
+      body.innerHTML = `<tr><td colspan="4" class="empty">No profiles yet.</td></tr>`;
+      return;
+    }
+    body.innerHTML = prof.list.map(p => {
+      const set = Object.entries(p.fields || {}).filter(([, v]) => v).map(([k, v]) => `${k}=${v}`).join(', ');
+      return `<tr>
+        <td>${esc(p.name)}</td>
+        <td>${esc(p.remark || '-')}</td>
+        <td class="uri" title="${esc(set)}">${esc(set || '-')}</td>
+        <td class="actions">
+          <button class="profedit" data-id="${p.id}">Edit</button>
+          <button class="profdel" data-id="${p.id}">Delete</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  function fillProfileSelect() {
+    const select = document.getElementById('poolProfile');
+    const current = select.value;
+    select.innerHTML = '<option value="">Apply profile...</option>' +
+      prof.list.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+    select.value = current;
+  }
+
+  async function loadProfiles() {
+    prof.list = await api('/profiles');
+    renderProfiles();
+    fillProfileSelect();
+  }
+
+  function openProfileEditor(profile) {
+    prof.editing = profile;
+    document.getElementById('profEditorTitle').textContent = profile ? `Editing "${profile.name}"` : '';
+    document.getElementById('profFields').innerHTML = PROFILE_FIELDS.map(([key, label]) => `
+      <label>${esc(label)}
+        <input data-field="${key}" value="${esc((profile && profile.fields && profile.fields[key]) || '')}" placeholder="leave empty to keep">
+      </label>`).join('');
+    document.getElementById('profHint').textContent = '';
+    document.getElementById('profEditor').hidden = false;
+  }
+
+  document.getElementById('profRows').addEventListener('click', async e => {
+    const id = Number(e.target.dataset.id);
+    if (e.target.classList.contains('profedit')) {
+      openProfileEditor(prof.list.find(p => p.id === id));
+    } else if (e.target.classList.contains('profdel')) {
+      if (!confirm('Delete this profile? Configs it was applied to are not changed back.')) return;
+      try { await api('/profiles/' + id, { method: 'DELETE' }); toast('Deleted'); await loadProfiles(); }
+      catch (err) { toast(err.message); }
+    }
+  });
+
+  document.getElementById('profNew').onclick = async () => {
+    const name = document.getElementById('profName').value.trim();
+    if (!name) return toast('Give the profile a name');
+    try {
+      const created = await api('/profiles', {
+        method: 'POST',
+        body: JSON.stringify({ name, remark: document.getElementById('profNote').value.trim(), fields: {} }),
+      });
+      document.getElementById('profName').value = '';
+      document.getElementById('profNote').value = '';
+      await loadProfiles();
+      openProfileEditor(prof.list.find(p => p.id === created.id));
+      toast('Created - now set the fields below');
+    } catch (err) { toast(err.message); }
+  };
+
+  document.getElementById('profClose').onclick = () => { document.getElementById('profEditor').hidden = true; prof.editing = null; };
+
+  document.getElementById('profSave').onclick = async () => {
+    if (!prof.editing) return;
+    const fields = {};
+    document.querySelectorAll('#profFields input').forEach(input => {
+      const value = input.value.trim();
+      if (value) fields[input.dataset.field] = value;
+    });
+    try {
+      await api('/profiles/' + prof.editing.id, { method: 'PUT', body: JSON.stringify({ fields }) });
+      toast('Saved');
+      await loadProfiles();
+      document.getElementById('profEditor').hidden = true;
+      prof.editing = null;
+    } catch (err) {
+      document.getElementById('profHint').textContent = err.message;
+      toast(err.message);
+    }
+  };
+
+  document.getElementById('applyProfile').onclick = async () => {
+    const profileId = Number(document.getElementById('poolProfile').value);
+    if (!profileId) return toast('Pick a profile first');
+    const hashes = [...state.selected];
+    if (!hashes.length) return toast('Select the configs to apply it to');
+    if (!confirm(`Apply this profile to ${hashes.length} config(s)? Their URIs are rewritten.`)) return;
+    try {
+      const result = await api('/profiles/apply', {
+        method: 'POST',
+        body: JSON.stringify({ profile_id: profileId, uri_hashes: hashes }),
+      });
+      toast(result.detail || `${result.applied} updated${result.skipped ? `, ${result.skipped} skipped` : ''}`);
+      clearSelection();
+      await loadPool();
+    } catch (err) { toast(err.message); }
+  };
+
+  // profiles populate a control on the pool tab, so they are loaded up front
+  loadProfiles().catch(() => {});
+
   // ---------------------------------------------------------------- tabs
 
   document.querySelectorAll('.tabs button').forEach(button => {
     button.onclick = () => {
       document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b === button)));
-      for (const name of ['pool', 'groups', 'sources', 'settings']) {
+      for (const name of ['pool', 'candidates', 'groups', 'sources', 'profiles', 'settings']) {
         document.getElementById('tab-' + name).hidden = name !== button.dataset.tab;
       }
+      if (button.dataset.tab === 'candidates') loadCandidates().catch(e => toast(e.message));
       if (button.dataset.tab === 'groups') loadGroups().catch(e => toast(e.message));
       if (button.dataset.tab === 'sources') loadSources().catch(e => toast(e.message));
+      if (button.dataset.tab === 'profiles') loadProfiles().catch(e => toast(e.message));
       if (button.dataset.tab === 'settings') loadSettings().catch(e => toast(e.message));
     };
   });

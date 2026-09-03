@@ -65,7 +65,7 @@ sources (DB)  ──fetch──▶  parse & dedupe  ──TCP health check──
    this is what makes checking the whole pool affordable instead of an arbitrary slice.
 4. At most `MAX_PER_ENDPOINT` configs from any one server are kept, since they all fail
    together when it goes down.
-5. The pool is replaced wholesale — entries that vanished upstream stop being served.
+A rebuild no longer replaces the pool. What it finds goes into the **Candidates** tab, and the pool changes only when you move something across.
 6. On a subscription request, eligible users get the fastest `MAX_PER_SUBSCRIPTION` of
    them appended.
 

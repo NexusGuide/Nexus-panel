@@ -13,7 +13,7 @@ from aiocache import cached
 from app.db import GetDB
 from app.free_configs import crud
 from app.free_configs.fetcher import HealthResult, iter_checked_batches, iter_fetched_sources
-from app.free_configs.parser import ParsedConfig, label_uri, parse_uri
+from app.free_configs.parser import ParsedConfig, label_uri
 from app.free_configs.settings import get_settings
 from app.utils.logger import get_logger
 
@@ -46,7 +46,7 @@ async def refresh_pool() -> dict:
                         "sources": 0,
                         "fetched": 0,
                         "unique": 0,
-                        "healthy": 0,
+                        "candidates": 0,
                         "duration_seconds": 0.0,
                         "errors": [],
                     }
@@ -83,17 +83,6 @@ async def refresh_pool() -> dict:
             if settings.max_configs > 0:
                 candidates = candidates[: settings.max_configs]
 
-            # Hand-added configs join the candidate list so they get a health
-            # check like everything else; replace_configs keeps them whatever
-            # the answer is.
-            async with GetDB() as db:
-                manual = await crud.get_manual_overrides(db)
-            for row in manual:
-                parsed = parse_uri(row.uri)
-                if parsed is not None and parsed.uri_hash not in origin:
-                    origin[parsed.uri_hash] = None
-                    candidates.append(parsed)
-
             logger.info(
                 "free-configs: %d fetched, %d unique, health-checking %d",
                 fetched_total,
@@ -112,12 +101,16 @@ async def refresh_pool() -> dict:
             candidates.clear()
 
             async with GetDB() as db:
-                healthy_count = await crud.replace_configs(db, healthy_results, origin)
+                # The pool is not touched here. What a refresh found goes into
+                # the candidate tray, and only the owner moves anything across -
+                # see crud.store_candidates for why.
+                healthy_count = await crud.store_candidates(db, healthy_results, origin)
+                await crud.refresh_manual_configs(db)
                 for source_id, count, error in outcomes:
                     await crud.record_fetch_outcome(db, source_id, count, error, commit=False)
                 await db.commit()
 
-            # the pool changed - drop the cached read paths
+            # manual entries may have been restored into the pool
             _clear_group_cache()
             await _clear_pool_cache()
 
@@ -126,12 +119,12 @@ async def refresh_pool() -> dict:
                 "sources": len(source_specs),
                 "fetched": fetched_total,
                 "unique": len(origin),
-                "healthy": healthy_count,
+                "candidates": healthy_count,
                 "duration_seconds": round(duration, 1),
                 "errors": errors,
             }
             logger.info(
-                "free-configs: refresh done in %.1fs - %d healthy of %d checked",
+                "free-configs: refresh done in %.1fs - %d reachable of %d checked, waiting in the tray",
                 duration,
                 healthy_count,
                 checked,

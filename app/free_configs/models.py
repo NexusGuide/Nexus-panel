@@ -68,6 +68,65 @@ class FreeConfig(Base, IdMixin):
     __table_args__ = (Index("ix_free_configs_is_healthy", "is_healthy", "is_enabled"),)
 
 
+class FreeConfigCandidate(Base, IdMixin):
+    """A config a refresh found, waiting for the owner to decide about it.
+
+    A refresh used to replace the pool outright. That made the pool only ever as
+    good as the last run: one bad night - a source down, the network refusing
+    connections, an upstream list that shrank - and a working pool of thousands
+    was gone, with nothing to roll back to.
+
+    So a refresh writes here instead and never touches ``free_configs``. The
+    owner looks at what came back and promotes what they want. The pool changes
+    only when a person says so.
+    """
+
+    __tablename__ = "free_config_candidates"
+
+    uri: Mapped[str] = mapped_column(Text, nullable=False)
+    uri_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    protocol: Mapped[str] = mapped_column(String(16), default="", nullable=False)
+    address: Mapped[str] = mapped_column(String(256), default="", nullable=False)
+    port: Mapped[int] = mapped_column(default=0, nullable=False)
+    is_healthy: Mapped[bool] = mapped_column(default=False, nullable=False, server_default="0")
+    latency_ms: Mapped[int | None] = mapped_column(default=None, nullable=True)
+    source_id: Mapped[int | None] = mapped_column(
+        SqliteCompatibleBigInteger,
+        ForeignKey("free_config_sources.id", ondelete="SET NULL"),
+        default=None,
+        nullable=True,
+    )
+    found_at: Mapped[dt] = mapped_column(
+        DateTime(timezone=True), default_factory=lambda: dt.now(UTC), init=False, nullable=False
+    )
+
+    __table_args__ = (Index("ix_free_config_candidates_healthy", "is_healthy"),)
+
+
+class FreeConfigProfile(Base, IdMixin):
+    """A named set of field values to stamp onto configs the owner selects.
+
+    Community lists hand out the same servers with whatever transport settings
+    their author happened to use. An owner who knows a better combination - a
+    working SNI, a CDN address to front them with, a fingerprint that gets
+    through - would otherwise have to retype it on every config by hand.
+
+    Only the fields that are set here are touched; anything left empty is left
+    exactly as the config had it.
+    """
+
+    __tablename__ = "free_config_profiles"
+
+    name: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
+    # {field: value} in the same vocabulary the config editor uses, so a profile
+    # can set anything the editor can - and nothing it cannot
+    fields: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
+    remark: Mapped[str] = mapped_column(String(256), default="", nullable=False)
+    created_at: Mapped[dt] = mapped_column(
+        DateTime(timezone=True), default_factory=lambda: dt.now(UTC), init=False, nullable=False
+    )
+
+
 class FreeConfigOverride(Base, IdMixin):
     """An admin's decision about one config, kept apart from the pool itself.
 

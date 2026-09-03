@@ -1,5 +1,6 @@
 """Database access for the free-configs feature."""
 
+import json
 from datetime import UTC, datetime as dt
 
 from sqlalchemy import delete, exists, func, insert, or_, select, update
@@ -9,11 +10,14 @@ from app.db.models import Group, users_groups_association
 from app.free_configs.fetcher import HealthResult
 from app.free_configs.models import (
     FreeConfig,
+    FreeConfigCandidate,
     FreeConfigGroupAccess,
     FreeConfigGroupConfig,
     FreeConfigOverride,
+    FreeConfigProfile,
     FreeConfigSource,
 )
+from app.free_configs.parser import parse_uri
 from app.free_configs.settings import get_settings
 
 # --------------------------------------------------------------------------- #
@@ -93,30 +97,35 @@ INSERT_CHUNK_SIZE = 500
 IN_CHUNK_SIZE = 500
 
 
-async def replace_configs(db: AsyncSession, results: list[HealthResult], source_ids: dict[str, int | None]) -> int:
-    """Swap the pool for a freshly harvested one.
+async def store_candidates(db: AsyncSession, results: list[HealthResult], source_ids: dict[str, int | None]) -> int:
+    """Record what a refresh found, without touching the pool.
 
-    The pool is a cache of somebody else's data, so a straight replace is both
-    simpler and more correct than trying to merge: entries that vanished from
-    every upstream source should stop being served.
+    A refresh used to replace ``free_configs`` outright, which made the pool
+    only ever as good as the last run: one bad night - a source down, the
+    network refusing connections, an upstream list that shrank - and a working
+    pool of thousands was gone with nothing to roll back to. Now the pool is
+    changed only by a person, and this is the tray they choose from.
 
-    Only healthy configs are stored - an unhealthy entry is of no use to a
-    subscription, and keeping tens of thousands of dead ones was both a memory
-    and a disk cost for nothing.
+    Candidates are replaced each run, because they are a view of what upstream
+    currently offers rather than anything the owner has invested in. Configs
+    already in the pool are left out: the tray should hold decisions still to be
+    made, not repeat ones already taken.
+
+    Only reachable configs are stored - an unreachable one is of no use to a
+    subscription, and keeping tens of thousands of dead entries cost memory and
+    disk for nothing.
 
     Rows go in as plain dicts through Core in chunks rather than as ORM
-    instances: building one mapped object per config is what pushed a large
-    refresh into an OOM kill.
+    instances: one mapped object per config is what pushed a large refresh into
+    an OOM kill.
 
-    Returns the number of configs stored.
+    Returns the number of candidates stored.
     """
     now = dt.now(UTC)
-    overrides = await get_overrides_map(db)
-    manual_hashes = {uri_hash for uri_hash, row in overrides.items() if row.uri is not None}
 
-    # One server often carries dozens of near-identical configs. Serving all of
-    # them pads a subscription with entries that all fail together when that
-    # server goes down, so keep only a few per server - different credentials or
+    # One server often carries dozens of near-identical configs. Offering all of
+    # them pads the tray with entries that all fail together when that server
+    # goes down, so keep only a few per server - different credentials or
     # transports on the same host are worth a couple of tries, not thirty.
     #
     # "Same server" is (address, port, sni), not (address, port). Behind a CDN
@@ -128,10 +137,6 @@ async def replace_configs(db: AsyncSession, results: list[HealthResult], source_
         kept: list[HealthResult] = []
         seen: dict[tuple[str, int, str], int] = {}
         for result in results:
-            # a hand-added config is never squeezed out by the cap
-            if result.config.uri_hash in manual_hashes:
-                kept.append(result)
-                continue
             if not result.is_healthy:
                 continue
             key = result.config.endpoint_key
@@ -141,31 +146,218 @@ async def replace_configs(db: AsyncSession, results: list[HealthResult], source_
             kept.append(result)
         results = kept
 
+    existing = set((await db.execute(select(FreeConfig.uri_hash))).scalars().all())
+
+    rows = []
+    for result in results:
+        if not result.is_healthy or result.config.uri_hash in existing:
+            continue
+        rows.append(
+            {
+                "uri": result.config.uri,
+                "uri_hash": result.config.uri_hash,
+                "protocol": result.config.protocol,
+                "address": result.config.address,
+                "port": result.config.port,
+                "is_healthy": True,
+                "latency_ms": result.latency_ms,
+                "source_id": source_ids.get(result.config.uri_hash),
+                "found_at": now,
+            }
+        )
+
+    await db.execute(delete(FreeConfigCandidate))
+    for start in range(0, len(rows), INSERT_CHUNK_SIZE):
+        await db.execute(insert(FreeConfigCandidate), rows[start : start + INSERT_CHUNK_SIZE])
+    await db.commit()
+    return len(rows)
+
+
+async def get_candidates_page(
+    db: AsyncSession,
+    offset: int = 0,
+    limit: int = 100,
+    search: str = "",
+    protocol: str = "",
+) -> tuple[list[FreeConfigCandidate], int]:
+    """One page of the candidate tray, fastest first."""
+    stmt = select(FreeConfigCandidate)
+    count_stmt = select(func.count()).select_from(FreeConfigCandidate)
+
+    if search:
+        pattern = f"%{search}%"
+        clause = or_(FreeConfigCandidate.address.ilike(pattern), FreeConfigCandidate.uri.ilike(pattern))
+        stmt = stmt.where(clause)
+        count_stmt = count_stmt.where(clause)
+    if protocol:
+        stmt = stmt.where(FreeConfigCandidate.protocol == protocol)
+        count_stmt = count_stmt.where(FreeConfigCandidate.protocol == protocol)
+
+    total = (await db.execute(count_stmt)).scalar_one()
+    stmt = stmt.order_by(FreeConfigCandidate.latency_ms.is_(None), FreeConfigCandidate.latency_ms).offset(offset).limit(limit)
+    rows = list((await db.execute(stmt)).scalars().all())
+    return rows, total
+
+
+async def promote_candidates(db: AsyncSession, uri_hashes: list[str]) -> int:
+    """Move chosen candidates into the pool.
+
+    Promotion is the only path by which a harvested config enters the pool, so
+    it is also where the pool's own bookkeeping is applied: an entry the owner
+    had previously switched off stays off, because the override outlives the
+    config it refers to.
+
+    An empty list means "all of them", which is what the select-all button in
+    the tray sends rather than tens of thousands of hashes.
+    """
+    now = dt.now(UTC)
+    overrides = await get_overrides_map(db)
+
+    stmt = select(FreeConfigCandidate)
+    if uri_hashes:
+        stmt = stmt.where(FreeConfigCandidate.uri_hash.in_(uri_hashes))
+    candidates = list((await db.execute(stmt)).scalars().all())
+    if not candidates:
+        return 0
+
+    existing = set((await db.execute(select(FreeConfig.uri_hash))).scalars().all())
+
     rows = [
         {
-            "uri": result.config.uri,
-            "uri_hash": result.config.uri_hash,
-            "protocol": result.config.protocol,
-            "address": result.config.address,
-            "port": result.config.port,
-            "is_healthy": result.is_healthy,
-            # the admin's switch, re-applied to the freshly harvested pool
-            "is_enabled": overrides[result.config.uri_hash].is_enabled if result.config.uri_hash in overrides else True,
-            "is_manual": result.config.uri_hash in manual_hashes,
-            "latency_ms": result.latency_ms,
+            "uri": candidate.uri,
+            "uri_hash": candidate.uri_hash,
+            "protocol": candidate.protocol,
+            "address": candidate.address,
+            "port": candidate.port,
+            "is_healthy": candidate.is_healthy,
+            "is_enabled": overrides[candidate.uri_hash].is_enabled if candidate.uri_hash in overrides else True,
+            "is_manual": False,
+            "latency_ms": candidate.latency_ms,
             "last_checked_at": now,
-            "source_id": source_ids.get(result.config.uri_hash),
+            "source_id": candidate.source_id,
             "created_at": now,
         }
-        for result in results
-        if result.is_healthy or result.config.uri_hash in manual_hashes
+        for candidate in candidates
+        if candidate.uri_hash not in existing
     ]
 
-    await db.execute(delete(FreeConfig))
+    for start in range(0, len(rows), INSERT_CHUNK_SIZE):
+        await db.execute(insert(FreeConfig), rows[start : start + INSERT_CHUNK_SIZE])
+
+    promoted = {row["uri_hash"] for row in rows}
+    if promoted:
+        for start in range(0, len(list(promoted)), IN_CHUNK_SIZE):
+            chunk = list(promoted)[start : start + IN_CHUNK_SIZE]
+            await db.execute(delete(FreeConfigCandidate).where(FreeConfigCandidate.uri_hash.in_(chunk)))
+    await db.commit()
+    return len(rows)
+
+
+async def discard_candidates(db: AsyncSession, uri_hashes: list[str]) -> int:
+    """Throw away candidates the owner does not want. Empty list means all."""
+    stmt = delete(FreeConfigCandidate)
+    if uri_hashes:
+        stmt = stmt.where(FreeConfigCandidate.uri_hash.in_(uri_hashes))
+    result = await db.execute(stmt)
+    await db.commit()
+    return result.rowcount or 0
+
+
+async def count_candidates(db: AsyncSession) -> int:
+    return (await db.execute(select(func.count()).select_from(FreeConfigCandidate))).scalar_one()
+
+
+async def refresh_manual_configs(db: AsyncSession) -> int:
+    """Make sure every hand-added config is in the pool.
+
+    Manual entries are stored as overrides carrying a uri, so that they survive
+    anything that happens to the pool. This puts any that are missing back, and
+    is cheap enough to run after every refresh.
+    """
+    now = dt.now(UTC)
+    overrides = await get_overrides_map(db)
+    manual = {uri_hash: row for uri_hash, row in overrides.items() if row.uri is not None}
+    if not manual:
+        return 0
+
+    existing = set((await db.execute(select(FreeConfig.uri_hash))).scalars().all())
+    rows = []
+    for uri_hash, row in manual.items():
+        if uri_hash in existing:
+            continue
+        parsed = parse_uri(row.uri)
+        if parsed is None:
+            continue
+        rows.append(
+            {
+                "uri": row.uri,
+                "uri_hash": uri_hash,
+                "protocol": parsed.protocol,
+                "address": parsed.address,
+                "port": parsed.port,
+                "is_healthy": True,
+                "is_enabled": row.is_enabled,
+                "is_manual": True,
+                "latency_ms": None,
+                "last_checked_at": now,
+                "source_id": None,
+                "created_at": now,
+            }
+        )
     for start in range(0, len(rows), INSERT_CHUNK_SIZE):
         await db.execute(insert(FreeConfig), rows[start : start + INSERT_CHUNK_SIZE])
     await db.commit()
     return len(rows)
+
+
+# --------------------------------------------------------------------------- #
+# profiles
+# --------------------------------------------------------------------------- #
+
+
+async def get_profiles(db: AsyncSession) -> list[FreeConfigProfile]:
+    return list((await db.execute(select(FreeConfigProfile).order_by(FreeConfigProfile.name))).scalars().all())
+
+
+async def get_profile(db: AsyncSession, profile_id: int) -> FreeConfigProfile | None:
+    return (
+        await db.execute(select(FreeConfigProfile).where(FreeConfigProfile.id == profile_id))
+    ).scalar_one_or_none()
+
+
+async def get_profile_by_name(db: AsyncSession, name: str) -> FreeConfigProfile | None:
+    return (await db.execute(select(FreeConfigProfile).where(FreeConfigProfile.name == name))).scalar_one_or_none()
+
+
+async def create_profile(db: AsyncSession, name: str, fields: dict, remark: str = "") -> FreeConfigProfile:
+    profile = FreeConfigProfile(name=name, fields=json.dumps(fields, ensure_ascii=False), remark=remark)
+    db.add(profile)
+    await db.commit()
+    await db.refresh(profile)
+    return profile
+
+
+async def update_profile(
+    db: AsyncSession,
+    profile: FreeConfigProfile,
+    name: str | None = None,
+    fields: dict | None = None,
+    remark: str | None = None,
+) -> FreeConfigProfile:
+    if name is not None:
+        profile.name = name
+    if fields is not None:
+        profile.fields = json.dumps(fields, ensure_ascii=False)
+    if remark is not None:
+        profile.remark = remark
+    await db.commit()
+    await db.refresh(profile)
+    return profile
+
+
+async def delete_profile(db: AsyncSession, profile: FreeConfigProfile) -> None:
+    await db.delete(profile)
+    await db.commit()
 
 
 async def get_healthy_configs(db: AsyncSession, limit: int = 0) -> list[tuple[str, str | None]]:
@@ -285,6 +477,21 @@ async def get_overrides_map(db: AsyncSession) -> dict[str, FreeConfigOverride]:
 async def get_manual_overrides(db: AsyncSession) -> list[FreeConfigOverride]:
     stmt = select(FreeConfigOverride).where(FreeConfigOverride.uri.is_not(None))
     return list((await db.execute(stmt)).scalars().all())
+
+
+async def get_configs_by_hashes(db: AsyncSession, uri_hashes: list[str]) -> list[FreeConfig]:
+    """Pool configs by hash. An empty list means the whole pool.
+
+    Chunked because SQLite caps the number of bound parameters in one statement
+    and a selection here can be tens of thousands of hashes.
+    """
+    if not uri_hashes:
+        return list((await db.execute(select(FreeConfig))).scalars().all())
+    rows: list[FreeConfig] = []
+    for start in range(0, len(uri_hashes), IN_CHUNK_SIZE):
+        chunk = uri_hashes[start : start + IN_CHUNK_SIZE]
+        rows.extend((await db.execute(select(FreeConfig).where(FreeConfig.uri_hash.in_(chunk)))).scalars().all())
+    return rows
 
 
 async def get_config_by_hash(db: AsyncSession, uri_hash: str) -> FreeConfig | None:

@@ -7,6 +7,7 @@ keeping the diff against upstream small.
 """
 
 import asyncio
+import json
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -18,19 +19,26 @@ from app.free_configs.defaults import DEFAULT_SOURCES
 from app.free_configs.fields import ConfigFieldsError, as_form, build as build_uri
 from app.free_configs.parser import parse_uri
 from app.free_configs.schemas import (
+    ApplyProfileRequest,
     BulkOverrideUpdate,
+    CandidateSelection,
     ConfigFieldsResponse,
     ConfigFieldsUpdate,
+    FreeConfigCandidatePage,
+    FreeConfigCandidateResponse,
     FreeConfigOverrideUpdate,
     FreeConfigPage,
     FreeConfigResponse,
     FreeConfigSettingsResponse,
     FreeConfigSettingsUpdate,
-    FreeConfigsStatus,
     FreeConfigSourceCreate,
     FreeConfigSourceModify,
     FreeConfigSourceResponse,
+    FreeConfigsStatus,
     ManualConfigCreate,
+    ProfileCreate,
+    ProfileResponse,
+    ProfileUpdate,
 )
 from app.free_configs.schemas import (
     GroupAccessOne,
@@ -169,6 +177,7 @@ async def get_status(db: AsyncSession = Depends(get_db), _: AdminDetails = Depen
         pool_disabled=pool["disabled"],
         pool_manual=pool["manual"],
         pool_last_checked_at=pool["last_checked_at"],
+        candidates_waiting=await crud.count_candidates(db),
     )
 
 
@@ -503,3 +512,182 @@ async def set_group_access(
     valid = await crud.set_group_access(db, payload.group_ids)
     await service.invalidate_access_cache()
     return GroupAccessResponse(group_ids=valid)
+
+
+# --------------------------------------------------------------------------- #
+# candidates - what a refresh found, waiting to be chosen
+# --------------------------------------------------------------------------- #
+
+
+@router.get("/candidates", response_model=FreeConfigCandidatePage)
+async def list_candidates(
+    offset: int = 0,
+    limit: int = 100,
+    search: str = "",
+    protocol: str = "",
+    db: AsyncSession = Depends(get_db),
+    _: AdminDetails = Depends(require_owner),
+):
+    """One page of the candidate tray, fastest first."""
+    rows, total = await crud.get_candidates_page(db, offset=offset, limit=limit, search=search, protocol=protocol)
+    return FreeConfigCandidatePage(
+        items=[FreeConfigCandidateResponse.model_validate(row) for row in rows],
+        total=total,
+    )
+
+
+@router.post("/candidates/promote")
+async def promote_candidates(
+    payload: CandidateSelection,
+    db: AsyncSession = Depends(get_db),
+    _: AdminDetails = Depends(require_owner),
+):
+    """Move chosen candidates into the pool. An empty selection means all of them."""
+    promoted = await crud.promote_candidates(db, payload.uri_hashes)
+    await service.invalidate_pool_cache()
+    return {"promoted": promoted, "remaining": await crud.count_candidates(db)}
+
+
+@router.post("/candidates/discard")
+async def discard_candidates(
+    payload: CandidateSelection,
+    db: AsyncSession = Depends(get_db),
+    _: AdminDetails = Depends(require_owner),
+):
+    """Throw candidates away. An empty selection means all of them."""
+    discarded = await crud.discard_candidates(db, payload.uri_hashes)
+    return {"discarded": discarded, "remaining": await crud.count_candidates(db)}
+
+
+# --------------------------------------------------------------------------- #
+# profiles - a named set of field values to stamp onto configs
+# --------------------------------------------------------------------------- #
+
+
+def _profile_response(profile) -> ProfileResponse:
+    try:
+        fields = json.loads(profile.fields) if profile.fields else {}
+    except json.JSONDecodeError:
+        fields = {}
+    return ProfileResponse(id=profile.id, name=profile.name, remark=profile.remark, fields=fields)
+
+
+@router.get("/profiles", response_model=list[ProfileResponse])
+async def list_profiles(db: AsyncSession = Depends(get_db), _: AdminDetails = Depends(require_owner)):
+    return [_profile_response(profile) for profile in await crud.get_profiles(db)]
+
+
+@router.post("/profiles", response_model=ProfileResponse, status_code=status.HTTP_201_CREATED)
+async def create_profile(
+    payload: ProfileCreate,
+    db: AsyncSession = Depends(get_db),
+    _: AdminDetails = Depends(require_owner),
+):
+    if await crud.get_profile_by_name(db, payload.name):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A profile with that name already exists")
+    profile = await crud.create_profile(db, name=payload.name, fields=payload.fields, remark=payload.remark)
+    return _profile_response(profile)
+
+
+@router.put("/profiles/{profile_id}", response_model=ProfileResponse, responses={404: responses._404})
+async def modify_profile(
+    profile_id: int,
+    payload: ProfileUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: AdminDetails = Depends(require_owner),
+):
+    profile = await crud.get_profile(db, profile_id)
+    if profile is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
+    if payload.name and payload.name != profile.name and await crud.get_profile_by_name(db, payload.name):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A profile with that name already exists")
+    profile = await crud.update_profile(db, profile, name=payload.name, fields=payload.fields, remark=payload.remark)
+    return _profile_response(profile)
+
+
+@router.delete("/profiles/{profile_id}", status_code=status.HTTP_204_NO_CONTENT, responses={404: responses._404})
+async def remove_profile(
+    profile_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: AdminDetails = Depends(require_owner),
+):
+    profile = await crud.get_profile(db, profile_id)
+    if profile is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
+    await crud.delete_profile(db, profile)
+
+
+@router.post("/profiles/apply")
+async def apply_profile(
+    payload: ApplyProfileRequest,
+    db: AsyncSession = Depends(get_db),
+    _: AdminDetails = Depends(require_owner),
+):
+    """Stamp a profile's values onto the selected configs.
+
+    Each config is rebuilt through the same editor the per-config form uses, so
+    a profile can set exactly what a person could set by hand and nothing more.
+    Only the fields the profile carries are touched; everything else is left as
+    it was, which is what makes an empty value mean "leave this alone" rather
+    than "clear this".
+
+    A config the editor cannot take apart is skipped and counted rather than
+    failing the whole request: community lists contain malformed entries, and
+    one of them should not stop the other nine hundred from being updated.
+    """
+    profile = await crud.get_profile(db, payload.profile_id)
+    if profile is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
+    try:
+        fields = json.loads(profile.fields) if profile.fields else {}
+    except json.JSONDecodeError:
+        fields = {}
+    if not fields:
+        return {"applied": 0, "skipped": 0, "detail": "This profile has no values set"}
+
+    configs = await crud.get_configs_by_hashes(db, payload.uri_hashes)
+    applied = skipped = 0
+    for config in configs:
+        try:
+            form = as_form(config.uri)
+        except ConfigFieldsError:
+            skipped += 1
+            continue
+
+        params = dict(form.get("params") or {})
+        address = form.get("address", "")
+        port = int(form.get("port") or 0)
+        alias = form.get("alias", "")
+
+        for key, raw in fields.items():
+            value = "" if raw is None else str(raw)
+            if not value:
+                continue
+            if key == "address":
+                address = value
+            elif key == "port":
+                try:
+                    port = int(value)
+                except ValueError:
+                    continue
+            elif key == "alias":
+                alias = value
+            else:
+                params[key] = value
+
+        try:
+            uri = build_uri(config.protocol, alias, address, port, params)
+        except ConfigFieldsError:
+            skipped += 1
+            continue
+        parsed = parse_uri(uri)
+        if parsed is None:
+            skipped += 1
+            continue
+        if parsed.uri_hash == config.uri_hash:
+            continue
+        await crud.replace_with_edited(db, config.uri_hash, parsed, remark=alias or None)
+        applied += 1
+
+    await service.invalidate_pool_cache()
+    return {"applied": applied, "skipped": skipped}

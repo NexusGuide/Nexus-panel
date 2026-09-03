@@ -145,7 +145,7 @@ class RefreshStats(BaseModel):
     sources: int = 0
     fetched: int = 0
     unique: int = 0
-    healthy: int = 0
+    candidates: int = 0
     duration_seconds: float = 0.0
     errors: list[dict] = Field(default_factory=list)
 
@@ -163,6 +163,8 @@ class FreeConfigsStatus(BaseModel):
     pool_disabled: int = 0
     pool_manual: int = 0
     pool_last_checked_at: dt | None = None
+    # how many configs a refresh found that nobody has decided about yet
+    candidates_waiting: int = 0
     supported_schemes: list[str] = Field(default_factory=lambda: list(SUPPORTED_SCHEMES))
     note: str = (
         "Health means the endpoint answered a TCP connect from this server - not that the proxy "
@@ -244,3 +246,62 @@ class GroupFreeConfigState(BaseModel):
     enabled: bool = False
     uri_hashes: list[str] = Field(default_factory=list)
     gets_whole_pool: bool = True
+
+
+# --------------------------------------------------------------------------- #
+# candidates and profiles
+# --------------------------------------------------------------------------- #
+
+
+class FreeConfigCandidateResponse(BaseModel):
+    uri: str
+    uri_hash: str
+    protocol: str
+    address: str
+    port: int
+    latency_ms: int | None = None
+    source_id: int | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class FreeConfigCandidatePage(BaseModel):
+    items: list[FreeConfigCandidateResponse]
+    total: int
+
+
+class CandidateSelection(BaseModel):
+    """Which candidates to act on. An empty list means every one of them.
+
+    The tray routinely holds tens of thousands of entries, and "select all"
+    would otherwise mean posting every hash back to the server.
+    """
+
+    uri_hashes: list[str] = Field(default_factory=list)
+
+
+class ProfileResponse(BaseModel):
+    id: int
+    name: str
+    remark: str = ""
+    fields: dict = Field(default_factory=dict)
+
+
+class ProfileCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=128)
+    remark: str = Field(default="", max_length=256)
+    # {field: value} in the config editor's vocabulary; an empty value means
+    # "leave whatever the config already had"
+    fields: dict = Field(default_factory=dict)
+
+
+class ProfileUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=128)
+    remark: str | None = Field(default=None, max_length=256)
+    fields: dict | None = None
+
+
+class ApplyProfileRequest(BaseModel):
+    profile_id: int
+    # which pool configs to stamp; empty means every config in the pool
+    uri_hashes: list[str] = Field(default_factory=list)

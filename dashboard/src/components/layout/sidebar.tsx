@@ -2,8 +2,6 @@ import { Language } from '@/components/common/language'
 import Snowfall from '@/components/common/snowfall'
 import { useTheme } from '@/app/providers/theme-provider'
 import { ThemeToggle } from '@/components/common/theme-toggle'
-import { GithubStar } from '@/components/layout/github-star'
-import { GoalProgress } from '@/components/layout/goal-progress'
 import { NavMain } from '@/components/layout/nav-main'
 import { NavSecondary } from '@/components/layout/nav-secondary'
 import { NavUser } from '@/components/layout/nav-user'
@@ -12,7 +10,7 @@ import { VersionBadge } from '@/components/layout/version-badge'
 import { Button } from '@/components/ui/button'
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarRail, useSidebar } from '@/components/ui/sidebar'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { DISCUSSION_GROUP, DOCUMENTATION, DONATION_URL, REPO_URL } from '@/constants/Project'
+import { BRAND_NAME, DISCUSSION_GROUP, DOCUMENTATION, DONATION_URL, REPO_URL } from '@/constants/Project'
 import { useAdmin } from '@/hooks/use-admin'
 import useDirDetection from '@/hooks/use-dir-detection'
 import { useSystemVersion } from '@/hooks/use-system-version'
@@ -394,14 +392,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ],
       },
     ],
-    navSecondary: [
-      {
-        title: t('supportUs'),
-        url: DONATION_URL,
-        icon: LifeBuoy,
-        target: '_blank',
-      },
-    ],
+    // An entry whose URL is empty in constants/Project.ts is dropped rather
+    // than rendered as a link to nowhere - that is how this fork turns off the
+    // parts of upstream's community section it has no equivalent for.
+    navSecondary: [{ title: t('supportUs'), url: DONATION_URL, icon: LifeBuoy, target: '_blank' }].filter(item => !!item.url),
     community: [
       {
         title: 'documentation',
@@ -421,7 +415,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         icon: GithubIcon,
         target: '_blank',
       },
-    ],
+    ].filter(item => !!item.url),
   }
 
   return (
@@ -432,11 +426,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <Link to="/" className="flex items-center gap-2">
             <img
               src={resolvedTheme === 'dark' ? window.location.pathname + 'statics/favicon/logo.png' : window.location.pathname + 'statics/favicon/logo-dark.png'}
-              alt="PasarGuard Logo"
+              alt={`${BRAND_NAME} logo`}
               className="h-8 w-8 object-contain"
             />
             <span dir={isRTL ? 'rtl' : 'ltr'} className="text-sm font-bold">
-              {t('pasarguard')}
+              {BRAND_NAME}
             </span>
           </Link>
           <SidebarTriggerWithBadge showUpdateBadge={canReadSystem && hasUpdate} />
@@ -467,7 +461,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     <a href={REPO_URL} target="_blank">
                       <img
                         src={resolvedTheme === 'dark' ? window.location.pathname + 'statics/favicon/logo.png' : window.location.pathname + 'statics/favicon/logo-dark.png'}
-                        alt="PasarGuard Logo"
+                        alt={`${BRAND_NAME} logo`}
                         className="h-6 w-6 flex-shrink-0 object-contain"
                       />
                       {canReadSystem && hasUpdate && (
@@ -506,11 +500,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     <a href={REPO_URL} target="_blank" className="flex min-w-0 flex-1 items-center gap-2">
                       <img
                         src={resolvedTheme === 'dark' ? window.location.pathname + 'statics/favicon/logo.png' : window.location.pathname + 'statics/favicon/logo-dark.png'}
-                        alt="PasarGuard Logo"
+                        alt={`${BRAND_NAME} logo`}
                         className="h-8 w-8 flex-shrink-0 object-contain"
                       />
                       <div className="flex min-w-0 flex-1 flex-col items-start overflow-hidden">
-                        <span className={cn(isRTL ? 'text-right' : 'text-left', 'truncate text-sm leading-tight font-semibold')}>{t('pasarguard')}</span>
+                        <span className={cn(isRTL ? 'text-right' : 'text-left', 'truncate text-sm leading-tight font-semibold')}>{BRAND_NAME}</span>
                         {canReadSystem && (
                           <div className="flex min-w-0 flex-wrap items-center gap-0.75 leading-none">
                             <span className="max-w-full truncate text-xs leading-none opacity-45">{displayVersion}</span>
@@ -555,11 +549,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <a href={REPO_URL} target="_blank">
                     <img
                       src={resolvedTheme === 'dark' ? window.location.pathname + 'statics/favicon/logo.png' : window.location.pathname + 'statics/favicon/logo-dark.png'}
-                      alt="PasarGuard Logo"
+                      alt={`${BRAND_NAME} logo`}
                       className="h-8 w-8 flex-shrink-0 object-contain"
                     />
                     <div className="flex min-w-0 flex-col overflow-hidden">
-                      <span className={cn(isRTL ? 'text-right' : 'text-left', 'truncate text-sm leading-tight font-semibold')}>{t('pasarguard')}</span>
+                      <span className={cn(isRTL ? 'text-right' : 'text-left', 'truncate text-sm leading-tight font-semibold')}>{BRAND_NAME}</span>
                       {canReadSystem && (
                         <div className="flex min-w-0 flex-wrap items-center gap-0.75 leading-none">
                           <span className="max-w-full truncate text-xs leading-none opacity-45">{displayVersion}</span>
@@ -579,11 +573,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarHeader>
         <SidebarContent>
           <NavMain items={data.navMain} />
-          {isOwner(admin) && <NavSecondary items={data.community} label={t('community')} />}
-          <NavSecondary items={data.navSecondary} className="mt-auto" />
-          <GoalProgress />
+          {isOwner(admin) && data.community.length > 0 && <NavSecondary items={data.community} label={t('community')} />}
+          {data.navSecondary.length > 0 && <NavSecondary items={data.navSecondary} className="mt-auto" />}
           <div className="flex items-center justify-between px-2 [&>:first-child]:[direction:ltr]">
-            {state !== 'collapsed' && <GithubStar />}
             {state !== 'collapsed' && (
               <div className="flex items-start gap-2">
                 <Language />
@@ -592,7 +584,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             )}
             {state === 'collapsed' && isMobile && (
               <>
-                <GithubStar />
 
                 <div className="flex items-start gap-2">
                   <Language />

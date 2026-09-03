@@ -60,7 +60,10 @@ const WorkersHealthCard = () => {
   const schedulerMeta = statusLabelMap[schedulerStatus] ?? { label: scheduler?.status || 'Unknown', variant: 'blank' }
   const nodeMeta = statusLabelMap[nodeStatus] ?? { label: node?.status || 'Unknown', variant: 'blank' }
   const natsDisabled = [scheduler?.error, node?.error].some(error => error?.toLowerCase().includes('nats is disabled'))
+  // empty when no documentation site is configured, so the help icon is hidden
+  // rather than linking to a relative path inside the panel
   const workerHealthDocsUrl = useMemo(() => {
+    if (!DOCUMENTATION) return ''
     const locale = i18n.resolvedLanguage || i18n.language || 'en'
     const normalizedLocale = locale.split('-')[0]
     return `${DOCUMENTATION}/${normalizedLocale}/learn/multi-worker/`
@@ -100,6 +103,7 @@ const WorkersHealthCard = () => {
             <div className="min-w-0">
               <div className={cn('flex items-center gap-1', dir === 'rtl' && 'justify-end')}>
                 <CardTitle className={cn(dir === 'rtl' && 'text-right', 'truncate text-sm font-semibold')}>{t('workersHealth.title', { defaultValue: 'Workers Health' })}</CardTitle>
+                {workerHealthDocsUrl && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -118,6 +122,7 @@ const WorkersHealthCard = () => {
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
+                )}
               </div>
               <p className="text-muted-foreground truncate text-xs">{t('workersHealth.subtitle', { defaultValue: 'Scheduler and node worker status' })}</p>
             </div>

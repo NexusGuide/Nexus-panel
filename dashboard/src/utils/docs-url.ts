@@ -3,13 +3,18 @@ import i18n from '@/locales/i18n'
 
 /**
  * Generates a documentation URL for a given page path
- * Format: docs.pasarguard.org/{locale}/panel/{page}
- * Special case: /nodes routes use docs.pasarguard.org/{locale}/node/
+ * Format: {DOCUMENTATION}/{locale}/panel/{page}
+ * Special case: /nodes routes use {DOCUMENTATION}/{locale}/node/
+ *
+ * Returns an empty string when no documentation site is configured, so callers
+ * can hide the link instead of pointing it at a relative path inside the panel.
  *
  * @param pagePath - The page path (e.g., '/settings', '/users', '/nodes/cores')
  * @returns The full documentation URL
  */
 export function getDocsUrl(pagePath: string): string {
+  if (!DOCUMENTATION) return ''
+
   const locale = i18n.language || 'en'
   // Normalize locale (e.g., 'en-US' -> 'en')
   const normalizedLocale = locale.split('-')[0]

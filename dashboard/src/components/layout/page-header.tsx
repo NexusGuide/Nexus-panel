@@ -33,6 +33,7 @@ export default function PageHeader({ title, description, buttonText, onButtonCli
       <div className="relative z-10 flex min-w-0 flex-1 flex-col gap-y-1">
         <div className="flex min-w-0 items-center gap-2.5">
           <h1 className="truncate text-2xl font-semibold tracking-tight">{t(title)}</h1>
+          {docsUrl && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -51,6 +52,7 @@ export default function PageHeader({ title, description, buttonText, onButtonCli
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+          )}
         </div>
         {description && <span className="text-muted-foreground text-sm leading-relaxed whitespace-normal">{t(description)}</span>}
       </div>

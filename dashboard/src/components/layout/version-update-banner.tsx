@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 import { useSystemVersion } from '@/hooks/use-system-version'
 import { useAdmin } from '@/hooks/use-admin'
 import { isOwner } from '@/utils/rbac'
+import { UPDATE_COMMAND } from '@/constants/Project'
 
 const VERSION_BANNER_STORAGE_KEY = 'version_update_banner_closed'
 const HOURS_TO_HIDE = 24
@@ -114,7 +115,7 @@ export function VersionUpdateBanner() {
   const handleCopyCommand = async (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    await copy('pasarguard update')
+    await copy(UPDATE_COMMAND)
     toast.success(t('usersTable.copied'))
   }
 
@@ -159,7 +160,7 @@ export function VersionUpdateBanner() {
                 onClick={handleCopyCommand}
                 title={t('copy')}
               >
-                pasarguard update
+                {UPDATE_COMMAND}
               </code>
             </div>
           </div>

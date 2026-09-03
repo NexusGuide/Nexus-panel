@@ -345,7 +345,7 @@ def create_app() -> FastAPI:
     _warn_deprecated_role()
 
     app = FastAPI(
-        title="PasarGuardAPI",
+        title="NexusPanelAPI",
         description="Unified GUI Censorship Resistant Solution",
         version=__version__,
         lifespan=lifespan,

@@ -1,261 +1,169 @@
-> ### Nexus Panel — an unofficial fork of PasarGuard
->
-> This repository is **not** the official PasarGuard project and is not endorsed
-> by or affiliated with the PasarGuard team. It is a fork maintained by
-> [NexusGuide](https://github.com/NexusGuide), tracking upstream
-> [PasarGuard/panel](https://github.com/PasarGuard/panel) with additions of its
-> own. Please report problems here, not to them.
->
-> **What this fork adds**
->
-> - **Free Configs** — harvests proxy URIs from public community lists, checks
->   them, and appends them to the subscription output of chosen groups, with a
->   panel page to manage the pool, edit a config field by field, and decide which
->   group gets what. See [FREE_CONFIGS.md](FREE_CONFIGS.md).
->
-> Everything is off unless switched on, so with no extra configuration this
-> behaves exactly like upstream.
->
-> Licensed **AGPL-3.0**, the same as upstream. The original README follows.
-
----
+<h1 align="center">Nexus Panel</h1>
 
 <p align="center">
-  <a href="https://github.com/PasarGuard/panel" target="_blank" rel="noopener noreferrer">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://github.com/PasarGuard/PasarGuard.github.io/raw/main/public/logos/PasarGuard-white-logo.png">
-      <img width="160" height="160" src="https://github.com/PasarGuard/PasarGuard.github.io/raw/main/public/logos/PasarGuard-black-logo.png">
-    </picture>
-  </a>
-</p>
-
-<h1 align="center">🛡️ PasarGuard</h1>
-
-<p align="center">
-    <strong>Unified & Censorship-Resistant Proxy Management Solution</strong>
-</p>
-
----
-
-<br/>
-<p align="center">
-    <a href="https://github.com/PasarGuard/panel/actions/workflows/build.yml" target="_blank">
-        <img src="https://img.shields.io/github/actions/workflow/status/PasarGuard/panel/build.yml?style=flat-square" />
-    </a>
-    <a href="https://hub.docker.com/r/PasarGuard/panel" target="_blank">
-        <img src="https://img.shields.io/docker/pulls/pasarguard/panel?style=flat-square&logo=docker" />
-    </a>
-    <a href="https://github.com/PasarGuard/panel/blob/main/LICENSE" target="_blank">
-        <img src="https://img.shields.io/github/license/PasarGuard/panel?style=flat-square" />
-    </a>
-    <a href="https://t.me/Pasar_Guard" target="_blank">
-        <img src="https://img.shields.io/badge/telegram-group-blue?style=flat-square&logo=telegram" />
-    </a>
-    <a href="https://github.com/PasarGuard/panel" target="_blank">
-        <img src="https://img.shields.io/github/stars/PasarGuard/panel?style=social" />
-    </a>
+    <strong>Proxy management panel with a built-in free-config pool</strong>
 </p>
 
 <p align="center">
- <a href="./README-fa.md">
- 🇮🇷 فارسی
- </a>
-  /
-  <a href="./README-zh-cn.md">
- 🇨🇳 简体中文
- </a>
-   /
-  <a href="./README-ru.md">
- 🇷🇺 Русский
- </a>
+    <a href="https://github.com/NexusGuide/Nexus-panel/actions/workflows/build-fork.yml">
+        <img src="https://img.shields.io/github/actions/workflow/status/NexusGuide/Nexus-panel/build-fork.yml?style=flat-square&label=image" />
+    </a>
+    <a href="https://github.com/NexusGuide/Nexus-panel/pkgs/container/nexus-panel">
+        <img src="https://img.shields.io/badge/ghcr.io-nexus--panel-blue?style=flat-square&logo=docker" />
+    </a>
+    <a href="https://github.com/NexusGuide/Nexus-panel/blob/main/LICENSE">
+        <img src="https://img.shields.io/github/license/NexusGuide/Nexus-panel?style=flat-square" />
+    </a>
 </p>
 
-<p align="center">
-  <a href="https://github.com/PasarGuard/panel" target="_blank" rel="noopener noreferrer" >
-    <img src="https://github.com/PasarGuard/PasarGuard.github.io/raw/main/public/logos/screenshot.png" alt="PasarGuard screenshots" width="600" height="auto">
-  </a>
-</p>
-
-## 📋 Table of Contents
-
-> **Quick Navigation** - Jump to any section below
-
--   [📖 Overview](#-overview)
-    -   [🤔 Why using PasarGuard?](#-why-using-pasarguard)
-        -   [✨ Features](#-features)
--   [🚀 Installation guide](#-installation-guide)
--   [📚 Documentation](#-documentation)
--   [💖 Donation](#-donation)
-
 ---
 
-# 📖 Overview
+## About
 
-> **What is PasarGuard?**
+Nexus Panel is a fork of [PasarGuard/panel](https://github.com/PasarGuard/panel). It
+keeps everything upstream does — multi-node proxy management, VMess, VLESS, Trojan,
+Shadowsocks, WireGuard and Hysteria2, TLS and REALITY, per-user traffic and expiry
+limits, subscription links, REST API, CLI and Telegram bot — and adds features of its
+own on top.
 
-PasarGuard is a powerful proxy management tool that offers an intuitive and efficient interface for handling hundreds of proxy accounts. Built with Python and React.js it combines performance, scalability, and ease of use to simplify large-scale proxy management. It supports both [Xray-core](https://github.com/XTLS/Xray-core) and [WireGuard](https://www.wireguard.com/) for maximum performance.
+> This project is **not** affiliated with or endorsed by the PasarGuard team.
+> Report problems with this fork here, not to them.
 
----
+Everything the fork adds is off until you switch it on, so a default install behaves
+exactly like upstream.
 
-## 🤔 Why using PasarGuard?
+## What this fork adds
 
-> **Simple, Powerful, Reliable**
+**Free Configs.** The panel harvests proxy URIs from public community lists,
+health-checks them, and appends the working ones to the subscription output of the
+groups you choose. It comes with a panel page to browse and search the pool, edit any
+config field by field (address, port, UUID, SNI, fingerprint, ALPN and the rest), add
+your own entries by hand, manage the source lists, and decide which group receives
+which configs — assigned from the same Create/Edit Group dialog you already use when
+creating a user.
 
-PasarGuard is a user-friendly, feature-rich, and reliable proxy management tool. It allows you to create and manage multiple proxies for your users without the need for complex configuration. With its built-in web interface, you can easily monitor activity, modify settings, and control user access limits — all from one convenient dashboard.
+Full documentation: **[FREE_CONFIGS.md](FREE_CONFIGS.md)**
 
----
+## Installation
 
-### ✨ Features
+One command, same as upstream. Pick the database you want:
 
-<div align="left">
+**TimescaleDB (recommended):**
 
-**🌐 Web Interface & API**
-- Built-in **Web UI** dashboard
-- Fully **REST API** backend
-- **Multi-Node** support for infrastructure distribution
-
-**🔐 Protocols & Security**
-- Supports **Vmess**, **VLESS**, **Trojan**, **Shadowsocks**, **WireGuard** and **Hysteria2**
-- **TLS** and **REALITY** support
-- **Multi-protocol** for a single user
-
-**👥 User Management**
-- **Multi-user** on a single inbound
-- **Multi-inbound** on a **single port** (fallbacks support)
-- **Traffic** and **expiry date** limitations
-- **Periodic** traffic limit (daily, weekly, etc.)
-- **HWID/device limits** for hardware-bound access control
-
-**🔗 Subscriptions & Sharing**
-- **Subscription link** compatible with **V2ray**, **Clash** and **ClashMeta**
-- Automated **Share link** and **QRcode** generator
-- System monitoring and **traffic statistics**
-
-**🛠️ Tools & Customization**
-- Customizable xray configuration
-- Integrated **Telegram Bot**
-- **Command Line Interface (CLI)**
-- **Multi-language** support
-- **Multi-admin** support with **RBAC** for granular permissions and scoped access
-
-</div>
-
----
-
-# 🚀 Installation guide
-
-> **Quick Start** - Get PasarGuard running in minutes
-
-### For a quick setup, use the following commands based on your preferred database.
-
----
-
-**TimescaleDB (Recommended):**
 ```bash
-sudo bash -c "$(curl -fsSL https://github.com/PasarGuard/scripts/raw/main/pasarguard.sh)" @ install --database timescaledb
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-panel/main/install.sh)" @ install --database timescaledb
 ```
 
 **SQLite:**
+
 ```bash
-sudo bash -c "$(curl -fsSL https://github.com/PasarGuard/scripts/raw/main/pasarguard.sh)" @ install
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-panel/main/install.sh)" @ install
 ```
 
 **MySQL:**
+
 ```bash
-sudo bash -c "$(curl -fsSL https://github.com/PasarGuard/scripts/raw/main/pasarguard.sh)" @ install --database mysql
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-panel/main/install.sh)" @ install --database mysql
 ```
 
 **MariaDB:**
+
 ```bash
-sudo bash -c "$(curl -fsSL https://github.com/PasarGuard/scripts/raw/main/pasarguard.sh)" @ install --database mariadb
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-panel/main/install.sh)" @ install --database mariadb
 ```
 
 **PostgreSQL:**
+
 ```bash
-sudo bash -c "$(curl -fsSL https://github.com/PasarGuard/scripts/raw/main/pasarguard.sh)" @ install --database postgresql
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-panel/main/install.sh)" @ install --database postgresql
 ```
 
-### 📋 After installation:
+The installer is a thin wrapper around PasarGuard's official one: it runs that
+installer unchanged, then points the compose file at this fork's image and writes the
+free-config settings into `.env`. Every flag the official installer accepts works
+here too, including `--ssl-domain panel.example.com`.
 
-<div align="left">
+### Fork-specific options
 
-**📋 Watch the logs** (press `Ctrl+C` to stop)
+| Option | What it does |
+| --- | --- |
+| `--image <ref>` | Use a different image, e.g. a local build: `--image nexus-panel:dev` |
+| `--no-seed` | Skip adding the default community source lists |
+| `--no-enable` | Install the image but leave the free-config feature switched off |
 
-**📁 Files are located at** `/opt/pasarguard`
+### Other subcommands
 
-**⚙️ Config file:** `/opt/pasarguard/.env` (see [Configuration](#-configuration) for details)
+```bash
+# re-apply the fork after an official update reverted the image
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-panel/main/install.sh)" @ apply
 
-**💾 Data files:** `/var/lib/pasarguard`
+# official update, then re-apply the fork
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-panel/main/install.sh)" @ update
+```
 
-**🔒 Important:** Dashboard requires SSL certificate for security
-- Get SSL certificate: [Guide](https://docs.pasarguard.org/en/examples/issue-ssl-certificate)
-- Access: `https://YOUR_DOMAIN:8000/dashboard/`
+Everything else is handled by the `pasarguard` command the official installer
+provides: `pasarguard logs`, `restart`, `status`, `cli`, `backup`, `uninstall`.
 
-**🔗 For testing without domain:** Use SSH port forwarding (see below)
+## After installation
 
-</div>
+| | |
+| --- | --- |
+| Files | `/opt/pasarguard` |
+| Config | `/opt/pasarguard/.env` |
+| Data | `/var/lib/pasarguard` |
+| Dashboard | `https://YOUR_DOMAIN:8000/dashboard/` |
 
----
+Create the owner account:
+
+```bash
+pasarguard cli generate-temp-key
+```
+
+Enter the key it prints on the dashboard login page.
+
+The dashboard needs a TLS certificate — see upstream's
+[certificate guide](https://docs.pasarguard.org/en/examples/issue-ssl-certificate).
+To try it without a domain, forward the port over SSH:
 
 ```bash
 ssh -L 8000:localhost:8000 user@serverip
 ```
 
-Then access: `http://localhost:8000/dashboard/`
+then open `http://localhost:8000/dashboard/`. This is for testing only; access ends
+when the SSH session closes.
 
-> ⚠️ **Testing only** - You'll lose access when you close the SSH terminal.
-
-### 🔧 Next Steps:
+## Running from source
 
 ```bash
-# Generate a one-time setup key for owner account setup
-pasarguard cli generate-temp-key
-
-# Use the key on the dashboard login page to create the owner account
-
-# Get help
-pasarguard --help
+git clone https://github.com/NexusGuide/Nexus-panel.git
+cd Nexus-panel
+docker build -t nexus-panel:dev .
 ```
 
+Then install with `--image nexus-panel:dev`.
 
+## Documentation
 
-# 📚 Documentation
+Everything inherited from upstream is documented in PasarGuard's own docs, which
+apply unchanged:
 
-<div align="left">
+[English](https://docs.pasarguard.org/en) ·
+[فارسی](https://docs.pasarguard.org/fa) ·
+[Русский](https://docs.pasarguard.org/ru) ·
+[简体中文](https://docs.pasarguard.org/zh-cn)
 
-**📖 Official Documentation** - Complete guides available in:
+What this fork adds is documented in [FREE_CONFIGS.md](FREE_CONFIGS.md).
 
-🇺🇸 **[English](https://docs.pasarguard.org/en)**
+## Credits
 
-🇮🇷 **[فارسی](https://docs.pasarguard.org/fa)**
+Nexus Panel exists because of [PasarGuard](https://github.com/PasarGuard/panel) — the
+panel, the dashboard, the installer and the node protocol are all their work, and this
+fork tracks their releases. If the base panel is useful to you, consider
+[supporting them](https://donate.pasarguard.org).
 
-🇷🇺 **[Русский](https://docs.pasarguard.org/ru)**
+The default community source lists are public collections maintained by their own
+authors, credited in [FREE_CONFIGS.md](FREE_CONFIGS.md).
 
-🇨🇳 **[简体中文](https://docs.pasarguard.org/zh-cn)**
+## License
 
-</div>
-
-> **Contributing:** Help improve documentation on [GitHub](https://github.com/PasarGuard/PasarGuard.github.io)
-
----
-
-# 💖 Donation
-
-<div align="left">
-
-> **Support PasarGuard Development**
-
-If PasarGuard helps you, consider supporting its development:
-
-[![Donate](https://img.shields.io/badge/Donate-Support%20Us-green?style=for-the-badge)](https://donate.pasarguard.org)
-
-**Thank you for your support!** 💖
-
-</div>
-
----
-
-<p align="center">
-  Made with ❤️ for Internet freedom
-</p>
-
+[AGPL-3.0](LICENSE), the same as upstream.

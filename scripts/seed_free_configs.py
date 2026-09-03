@@ -31,45 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.db import GetDB  # noqa: E402
 from app.free_configs import crud  # noqa: E402
-
-# (url, is_base64, remark)
-DEFAULT_SOURCES = [
-    ("https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/verified/configs.txt", False, "0xRadikal"),
-    ("https://raw.githubusercontent.com/itsyebekhe/PSG/main/subscriptions/xray/mix", False, "PSG mix"),
-    (
-        "https://github.com/Delta-Kronecker/V2ray-Config/raw/refs/heads/main/config/all_configs.txt",
-        False,
-        "Delta-Kronecker",
-    ),
-    (
-        "https://raw.githubusercontent.com/mahsanet/MahsaFreeConfig/refs/heads/main/mtn/sub_1.txt",
-        False,
-        "MahsaFreeConfig",
-    ),
-    ("https://raw.githubusercontent.com/iampedii/whitedns-sub/refs/heads/main/base64.txt", True, "whitedns"),
-    ("https://openproxylist.com/v2ray/rawlist/text", False, "openproxylist.com"),
-    (
-        "https://raw.githubusercontent.com/4n0nymou3/multi-proxy-config-fetcher/refs/heads/main/configs/proxy_configs_tested.txt",
-        False,
-        "4n0nymou3 (tested)",
-    ),
-    ("https://raw.githubusercontent.com/roosterkid/openproxylist/main/V2RAY_RAW.txt", False, "roosterkid"),
-    (
-        "https://raw.githubusercontent.com/iampedii/whitedns-sub/refs/heads/main/cloudflare-base64.txt",
-        True,
-        "whitedns cloudflare",
-    ),
-    # patterniha's own already-filtered output: an aggregate of the lists above,
-    # published as a single file. Harmless to include - duplicates are collapsed
-    # by URI hash during a refresh - and it adds whatever that project filtered
-    # in that our own pass may have missed.
-    (
-        "https://raw.githubusercontent.com/patterniha/free-configs/main/configs.txt",
-        False,
-        "patterniha (aggregated)",
-    ),
-]
-
+from app.free_configs.defaults import DEFAULT_SOURCES  # noqa: E402
 
 async def seed() -> None:
     added = skipped = 0

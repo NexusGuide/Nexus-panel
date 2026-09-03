@@ -110,8 +110,11 @@ documented there works:
 ... @ install --database postgresql --ssl-domain panel.example.com
 ```
 
-Fork-specific flags: `--image <ref>` (use a different or locally built image),
-`--no-seed`, `--no-enable`.
+Fork-specific flags: `--image <ref>` (use a different or locally built image) and
+`--no-enable`.
+
+The installer installs the panel and nothing else: it does not add sources or build a
+pool. Sources are content, and content is managed from the panel.
 
 Day-to-day management is the official command — `pasarguard logs | restart |
 status | cli | backup | uninstall`. Only these are the wrapper's:
@@ -182,14 +185,22 @@ FREE_CONFIGS_REFRESH_INTERVAL = 86400
 
 ### 3. Add sources
 
-Either seed the well-known community lists:
+In the panel, open **Free Configs → Sources** and press **Add default sources**. It adds
+whichever of the built-in community lists are not configured yet, and is safe to press
+twice — it never duplicates or removes anything. Then press refresh to build the pool.
+
+The same thing from the API, or from a shell on the panel host:
 
 ```bash
+curl -X POST https://panel.example.com/api/free-configs/sources/defaults \
+  -H "Authorization: Bearer $TOKEN"
+
+# or, inside the container
 python3 scripts/seed_free_configs.py
 python3 scripts/seed_free_configs.py --list
 ```
 
-The seeded list is the one published by
+That default list is the one published by
 [patterniha/free-configs](https://github.com/patterniha/free-configs) (MIT), plus that
 project's own aggregated output as a tenth source. None of its code is used here — this
 is an independent implementation of the same idea: aggregate several public lists, then

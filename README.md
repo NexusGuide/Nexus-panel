@@ -80,15 +80,18 @@ sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-pa
 
 The installer is a thin wrapper around PasarGuard's official one: it runs that
 installer unchanged, then points the compose file at this fork's image and writes the
-free-config settings into `.env`. Every flag the official installer accepts works
-here too, including `--ssl-domain panel.example.com`.
+free-config settings into `.env`. Every flag the official installer accepts works here
+too, including `--ssl-domain panel.example.com`.
+
+It installs the panel and nothing more: no source lists, no config pool. Those are
+content, and content is managed from the panel — Free Configs → Sources →
+**Add default sources**.
 
 ### Fork-specific options
 
 | Option | What it does |
 | --- | --- |
 | `--image <ref>` | Use a different image, e.g. a local build: `--image nexus-panel:dev` |
-| `--no-seed` | Skip adding the default community source lists |
 | `--no-enable` | Install the image but leave the free-config feature switched off |
 
 ### Other subcommands

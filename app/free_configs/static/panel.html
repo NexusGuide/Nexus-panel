@@ -180,6 +180,7 @@
     <input id="srcRemark" placeholder="Name (optional)" style="width:170px">
     <label class="row" style="gap:5px"><input type="checkbox" id="srcB64"> base64 body</label>
     <button id="addSource" class="primary">Add source</button>
+    <button id="addDefaults" title="Add the built-in community lists that are not configured yet">Add default sources</button>
   </div>
   <div class="wrap">
     <table>
@@ -502,7 +503,7 @@
     const sources = await api('/sources');
     const body = document.getElementById('srcRows');
     if (!sources.length) {
-      body.innerHTML = `<tr><td colspan="7" class="empty">No sources yet.</td></tr>`;
+      body.innerHTML = `<tr><td colspan="7" class="empty">No sources yet - add one above, or press "Add default sources".</td></tr>`;
       return;
     }
     body.innerHTML = sources.map(s => `
@@ -535,6 +536,17 @@
       loadSources();
     } catch (err) { toast(err.message); }
   });
+
+  document.getElementById('addDefaults').onclick = async () => {
+    // idempotent on the server: only the missing ones are created
+    try {
+      const result = await api('/sources/defaults', { method: 'POST' });
+      toast(result.added
+        ? `${result.added} of ${result.total} added - run a refresh to build the pool`
+        : 'All default sources are already configured');
+      loadSources();
+    } catch (err) { toast(err.message); }
+  };
 
   document.getElementById('addSource').onclick = async () => {
     const url = document.getElementById('srcUrl').value.trim();

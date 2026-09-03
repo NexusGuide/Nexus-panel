@@ -32,7 +32,6 @@
 # Fork-specific options:
 #   --image <ref>   use this image instead of the published one, e.g. a local
 #                   build:  --image nexus-panel:dev
-#   --no-seed       skip adding the default community sources
 #   --no-enable     install the fork's image but leave the feature switched off
 #
 set -euo pipefail
@@ -46,7 +45,6 @@ APP_DIR="/opt/${APP_NAME}"
 COMPOSE_FILE="${APP_DIR}/docker-compose.yml"
 ENV_FILE="${APP_DIR}/.env"
 
-DO_SEED=1
 # set by --image: only then does a locally present image mean "do not pull"
 IMAGE_OVERRIDDEN=0
 ENABLE=true
@@ -60,15 +58,38 @@ require_root() { [ "$(id -u)" -eq 0 ] || die "run this as root (use sudo)"; }
 
 compose() { docker compose -f "$COMPOSE_FILE" "$@"; }
 
-# The panel's code lives at /code, but `compose exec` does not reliably land
-# there: seeding failed with `can't open file '//scripts/seed_free_configs.py'`,
-# which is Python resolving a relative path against a working directory of "/".
-# Pinning it here fixes the seed and, with it, the readiness probe that had been
-# timing out for the same reason while the tables already existed.
+# Which container is the panel? The one running this fork's image.
+#
+# The obvious `compose config --services | head -1` is wrong: that list comes out
+# in dependency order, not the order the file declares, so on a TimescaleDB
+# install it returns the database. Every readiness probe and the whole seed step
+# then ran inside the database container, which has neither /code nor the app
+# package - the probe silently timed out, and seeding resolved its script path
+# against "/" and reported `can't open file '//scripts/seed_free_configs.py'`.
+#
+# Matching on the image instead of a position is correct by construction: the
+# panel is, by definition, the container running the image we just pointed the
+# compose file at.
+panel_container() {
+    local id
+    id="$(docker ps --filter "ancestor=${IMAGE}" --format '{{.ID}}' | head -1)"
+    if [ -z "$id" ]; then
+        # a name we can fall back on: upstream always calls the panel service
+        # after the app itself
+        id="$(compose ps -q "$APP_NAME" 2>/dev/null | head -1)"
+    fi
+    printf '%s' "$id"
+}
+
+# /code is where the Dockerfile puts the project and where `python scripts/...`
+# and `import app` both need to resolve from.
 panel_exec() {
-    local svc
-    svc="$(compose config --services | head -1)"
-    compose exec -T -w /code "$svc" "$@"
+    local id
+    id="$(panel_container)"
+    if [ -z "$id" ]; then
+        return 1
+    fi
+    docker exec -i -w /code "$id" "$@"
 }
 
 run_upstream() {
@@ -210,60 +231,6 @@ EOF
     else
         compose up -d
     fi
-
-    # The container accepts `exec` well before it is ready: start.sh runs
-    # `alembic upgrade head` first, and seeding against a half-migrated schema
-    # fails with "no such table: free_config_sources". So wait for the schema,
-    # not for the container.
-    info "waiting for the panel to finish its migrations ..."
-    local ready=0
-    for _ in $(seq 1 90); do
-        if panel_exec python -c \
-            "import asyncio
-from sqlalchemy import text
-from app.db import GetDB
-async def m():
-    async with GetDB() as db:
-        await db.execute(text('select 1 from free_config_sources'))
-asyncio.run(m())" >/dev/null 2>&1; then
-            ready=1
-            break
-        fi
-        sleep 2
-    done
-    if [ "$ready" -eq 0 ]; then
-        warn "the free-configs tables did not appear within three minutes"
-        warn "check \`pasarguard logs\` for the alembic output, then re-run: $0 apply"
-    fi
-}
-
-pool_size() {
-    panel_exec python -c \
-        "import asyncio; from app.db import GetDB; from app.free_configs import crud
-async def m():
-    async with GetDB() as db: print((await crud.get_pool_stats(db)).get('total', 0))
-asyncio.run(m())" 2>/dev/null | tr -dc '0-9'
-}
-
-seed_and_refresh() {
-    info "adding the default community sources ..."
-    panel_exec python scripts/seed_free_configs.py \
-        || { warn "seeding failed - add sources via POST /api/free-configs/sources"; return; }
-
-    # Re-applying the fork (after an official update, say) should not spend a
-    # minute rebuilding a pool that is already there. A first install always
-    # will, because the pool is empty.
-    local have
-    have="$(pool_size)"
-    if [ -n "$have" ] && [ "$have" -gt 0 ] 2>/dev/null; then
-        info "the pool already holds ${have} configs - leaving it to the scheduled job"
-        return
-    fi
-
-    info "building the pool for the first time (fetches and health-checks; takes a while) ..."
-    panel_exec python -c \
-        "import asyncio, json; from app.free_configs.service import refresh_pool; print(json.dumps(asyncio.run(refresh_pool()), indent=2))" \
-        || warn "the first refresh did not finish - the scheduled job will retry"
 }
 
 summary() {
@@ -276,6 +243,7 @@ ${GREEN}${BOLD}Done.${RESET} PasarGuard is installed by its own installer and no
   manage    ${BOLD}pasarguard${RESET} logs | restart | status | cli | backup | uninstall
 
 ${BOLD}Free configs${RESET}
+  sources   the panel's Free Configs page -> Sources -> "Add default sources"
   settings  ${ENV_FILE}  (FREE_CONFIGS_*)
   API       /api/free-configs/...   (owner only)
   refresh   $0 refresh
@@ -290,8 +258,6 @@ EOF
 }
 
 cmd_refresh() {
-    local svc
-    svc="$(compose config --services | head -1)"
     panel_exec python -c \
         "import asyncio, json; from app.free_configs.service import refresh_pool; print(json.dumps(asyncio.run(refresh_pool()), indent=2))"
 }
@@ -307,7 +273,6 @@ main() {
     while [ $# -gt 0 ]; do
         case "$1" in
             --image)     IMAGE="$2"; IMAGE_OVERRIDDEN=1; shift 2 ;;
-            --no-seed)   DO_SEED=0; shift ;;
             --no-enable) ENABLE=false; shift ;;
             *)           passthrough+=("$1"); shift ;;
         esac
@@ -329,7 +294,6 @@ main() {
             fi
             run_upstream install "${passthrough[@]+"${passthrough[@]}"}"
             apply_fork
-            [ "$DO_SEED" -eq 1 ] && [ "$ENABLE" = "true" ] && seed_and_refresh
             summary
             ;;
         apply)
@@ -337,7 +301,6 @@ main() {
             apply_fork
             # seeding is idempotent and the refresh is skipped when the pool is
             # already populated, so this is safe to run on every apply
-            [ "$DO_SEED" -eq 1 ] && [ "$ENABLE" = "true" ] && seed_and_refresh
             summary
             ;;
         update)

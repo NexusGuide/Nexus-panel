@@ -1,243 +1,169 @@
-<p align="center">
-  <a href="https://github.com/PasarGuard/panel" target="_blank" rel="noopener noreferrer">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://github.com/PasarGuard/PasarGuard.github.io/raw/main/public/logos/PasarGuard-white-logo.png">
-      <img width="160" height="160" src="https://github.com/PasarGuard/PasarGuard.github.io/raw/main/public/logos/PasarGuard-black-logo.png">
-    </picture>
-  </a>
-</p>
-
-<h1 align="center">🛡️ پاسارگارد</h1>
+<h1 align="center">Nexus Panel</h1>
 
 <p align="center">
-    <strong>راه‌حل یکپارچه و مقاوم در برابر سانسور برای مدیریت پروکسی</strong>
-</p>
-
----
-
-<br/>
-<p align="center">
-    <a href="#">
-        <img src="https://img.shields.io/github/actions/workflow/status/PasarGuard/panel/build.yml?style=flat-square" />
-    </a>
-    <a href="https://hub.docker.com/r/PasarGuard/panel" target="_blank">
-        <img src="https://img.shields.io/docker/pulls/PasarGuard/panel?style=flat-square&logo=docker" />
-    </a>
-    <a href="#">
-        <img src="https://img.shields.io/github/license/PasarGuard/panel?style=flat-square" />
-    </a>
-    <a href="https://t.me/Pasar_Guard" target="_blank">
-        <img src="https://img.shields.io/badge/telegram-group-blue?style=flat-square&logo=telegram" />
-    </a>
-    <a href="#">
-        <img src="https://img.shields.io/badge/twitter-commiunity-blue?style=flat-square&logo=twitter" />
-    </a>
-    <a href="#">
-        <img src="https://img.shields.io/github/stars/PasarGuard/panel?style=social" />
-    </a>
+    <strong>Proxy management panel with a built-in free-config pool</strong>
 </p>
 
 <p align="center">
- <a href="./README.md">
- 🇺🇸 English
- </a>
- /
- <a href="./README-fa.md">
- 🇮🇷 فارسی
- </a>
-  /
-  <a href="./README-zh-cn.md">
- 🇨🇳 简体中文
- </a>
-   /
-  <a href="./README-ru.md">
- 🇷🇺 Русский
- </a>
+    <a href="https://github.com/NexusGuide/Nexus-panel/actions/workflows/build-fork.yml">
+        <img src="https://img.shields.io/github/actions/workflow/status/NexusGuide/Nexus-panel/build-fork.yml?style=flat-square&label=image" />
+    </a>
+    <a href="https://github.com/NexusGuide/Nexus-panel/pkgs/container/nexus-panel">
+        <img src="https://img.shields.io/badge/ghcr.io-nexus--panel-blue?style=flat-square&logo=docker" />
+    </a>
+    <a href="https://github.com/NexusGuide/Nexus-panel/blob/main/LICENSE">
+        <img src="https://img.shields.io/github/license/NexusGuide/Nexus-panel?style=flat-square" />
+    </a>
 </p>
 
-<p align="center">
-  <a href="https://github.com/PasarGuard/panel" target="_blank" rel="noopener noreferrer" >
-    <img src="https://github.com/PasarGuard/PasarGuard.github.io/raw/main/public/logos/screenshot.png" alt="پاسارگارد اسکرین‌شات" width="600" height="auto">
-  </a>
-</p>
-
-## 📋 فهرست مطالب
-
-> **ناوبری سریع** - به هر بخش زیر پرش کنید
-
--   [📖 بررسی اجمالی](#-بررسی-اجمالی)
-    -   [🤔 چرا از پاسارگارد استفاده کنیم؟](#-چرا-از-پاسارگارد-استفاده-کنیم)
-        -   [✨ ویژگی‌ها](#-ویژگیها)
--   [🚀 راهنمای نصب](#-راهنمای-نصب)
--   [📚 مستندات](#-مستندات)
--   [💖 حمایت مالی](#-حمایت-مالی)
-
 ---
 
-# 📖 بررسی اجمالی
+## About
 
-> **پاسارگارد چیست؟**
+Nexus Panel is a fork of [PasarGuard/panel](https://github.com/PasarGuard/panel). It
+keeps everything upstream does — multi-node proxy management, VMess, VLESS, Trojan,
+Shadowsocks, WireGuard and Hysteria2, TLS and REALITY, per-user traffic and expiry
+limits, subscription links, REST API, CLI and Telegram bot — and adds features of its
+own on top.
 
-پاسارگارد یک ابزار قدرتمند مدیریت پروکسی است که رابط کاربری بصری و کارآمدی برای مدیریت صدها حساب پروکسی ارائه می‌دهد. این ابزار با Python و React.js ساخته شده و عملکرد، مقیاس‌پذیری و سهولت استفاده را برای ساده‌سازی مدیریت پروکسی در مقیاس بزرگ ترکیب می‌کند. این ابزار هم از [Xray-core](https://github.com/XTLS/Xray-core) و هم از [WireGuard](https://www.wireguard.com/) برای حداکثر عملکرد پشتیبانی می‌کند.
+> This project is **not** affiliated with or endorsed by the PasarGuard team.
+> Report problems with this fork here, not to them.
 
----
+Everything the fork adds is off until you switch it on, so a default install behaves
+exactly like upstream.
 
-## 🤔 چرا از پاسارگارد استفاده کنیم؟
+## What this fork adds
 
-> **ساده، قدرتمند، قابل اعتماد**
+**Free Configs.** The panel harvests proxy URIs from public community lists,
+health-checks them, and appends the working ones to the subscription output of the
+groups you choose. It comes with a panel page to browse and search the pool, edit any
+config field by field (address, port, UUID, SNI, fingerprint, ALPN and the rest), add
+your own entries by hand, manage the source lists, and decide which group receives
+which configs — assigned from the same Create/Edit Group dialog you already use when
+creating a user.
 
-پاسارگارد یک ابزار مدیریت پروکسی کاربرپسند، غنی از ویژگی و قابل اعتماد است. این ابزار به شما امکان ایجاد و مدیریت چندین پروکسی برای کاربران بدون نیاز به پیکربندی پیچیده را می‌دهد. با رابط کاربری وب داخلی آن، می‌توانید به راحتی فعالیت‌ها را نظارت کنید، تنظیمات را تغییر دهید و محدودیت‌های دسترسی کاربران را کنترل کنید — همه از یک داشبورد مناسب.
+Full documentation: **[FREE_CONFIGS.md](FREE_CONFIGS.md)**
 
----
+## Installation
 
-### ✨ ویژگی‌ها
+One command, same as upstream. Pick the database you want:
 
-<div align="right">
+**TimescaleDB (recommended):**
 
-**🌐 رابط کاربری وب و API**
-- داشبورد **Web UI** داخلی
-- بک‌اند کاملاً **REST API**
-- پشتیبانی از **Multi-Node** برای توزیع زیرساخت
-
-**🔐 پروتکل‌ها و امنیت**
-- پشتیبانی از **Vmess**، **VLESS**، **Trojan**، **Shadowsocks**، **WireGuard** و **Hysteria2**
-- پشتیبانی از **TLS** و **REALITY**
-- **چند پروتکل** برای یک کاربر
-
-**👥 مدیریت کاربران**
-- **چند کاربر** روی یک inbound
-- **چند inbound** روی **یک پورت** (پشتیبانی از fallbacks)
-- محدودیت‌های **ترافیک** و **تاریخ انقضا**
-- محدودیت ترافیک **دوره‌ای** (روزانه، هفتگی و غیره)
-- محدودیت **HWID/دستگاه** برای کنترل دسترسی مبتنی بر سخت‌افزار
-
-**🔗 اشتراک‌ها و اشتراک‌گذاری**
-- **لینک اشتراک** سازگار با **V2ray**، **Clash** و **ClashMeta**
-- تولیدکننده خودکار **لینک اشتراک** و **QRcode**
-- نظارت بر سیستم و **آمار ترافیک**
-
-**🛠️ ابزارها و سفارشی‌سازی**
-- پیکربندی قابل تنظیم xray
-- **ربات تلگرام** یکپارچه
-- **رابط خط فرمان (CLI)**
-- پشتیبانی از **چند زبان**
-- پشتیبانی از **چند ادمین** با **RBAC** برای دسترسی‌های دقیق و محدوده‌بندی‌شده
-
-</div>
-
----
-
-# 🚀 راهنمای نصب
-
-> **شروع سریع** - پاسارگارد را در چند دقیقه راه‌اندازی کنید
-
-### برای راه‌اندازی سریع، از دستورات زیر بر اساس دیتابیس مورد نظرتان استفاده کنید.
-
----
-
-**TimescaleDB (توصیه شده):**
 ```bash
-sudo bash -c "$(curl -fsSL https://github.com/PasarGuard/scripts/raw/main/pasarguard.sh)" @ install --database timescaledb
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-panel/main/install.sh)" @ install --database timescaledb
 ```
 
 **SQLite:**
+
 ```bash
-sudo bash -c "$(curl -fsSL https://github.com/PasarGuard/scripts/raw/main/pasarguard.sh)" @ install
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-panel/main/install.sh)" @ install
 ```
 
 **MySQL:**
+
 ```bash
-sudo bash -c "$(curl -fsSL https://github.com/PasarGuard/scripts/raw/main/pasarguard.sh)" @ install --database mysql
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-panel/main/install.sh)" @ install --database mysql
 ```
 
 **MariaDB:**
+
 ```bash
-sudo bash -c "$(curl -fsSL https://github.com/PasarGuard/scripts/raw/main/pasarguard.sh)" @ install --database mariadb
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-panel/main/install.sh)" @ install --database mariadb
 ```
 
 **PostgreSQL:**
+
 ```bash
-sudo bash -c "$(curl -fsSL https://github.com/PasarGuard/scripts/raw/main/pasarguard.sh)" @ install --database postgresql
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-panel/main/install.sh)" @ install --database postgresql
 ```
 
-### 📋 پس از نصب:
+The installer is a thin wrapper around PasarGuard's official one: it runs that
+installer unchanged, then points the compose file at this fork's image and writes the
+free-config settings into `.env`. Every flag the official installer accepts works
+here too, including `--ssl-domain panel.example.com`.
 
-<div align="right">
+### Fork-specific options
 
-**📋 لاگ‌ها را مشاهده کنید** (برای توقف `Ctrl+C` را فشار دهید)
+| Option | What it does |
+| --- | --- |
+| `--image <ref>` | Use a different image, e.g. a local build: `--image nexus-panel:dev` |
+| `--no-seed` | Skip adding the default community source lists |
+| `--no-enable` | Install the image but leave the free-config feature switched off |
 
-**📁 فایل‌ها در مسیر** `/opt/pasarguard` قرار دارند
+### Other subcommands
 
-**⚙️ فایل پیکربندی:** `/opt/pasarguard/.env` (برای جزئیات [پیکربندی](#-پیکربندی) را ببینید)
+```bash
+# re-apply the fork after an official update reverted the image
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-panel/main/install.sh)" @ apply
 
-**💾 فایل‌های داده:** `/var/lib/pasarguard`
+# official update, then re-apply the fork
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-panel/main/install.sh)" @ update
+```
 
-**🔒 مهم:** داشبورد برای امنیت نیاز به گواهی SSL دارد
-- دریافت گواهی SSL: [راهنما](https://PasarGuard.github.io/PasarGuard/fa/examples/issue-ssl-certificate)
-- دسترسی: `https://YOUR_DOMAIN:8000/dashboard/`
+Everything else is handled by the `pasarguard` command the official installer
+provides: `pasarguard logs`, `restart`, `status`, `cli`, `backup`, `uninstall`.
 
-**🔗 برای تست بدون دامنه:** از SSH port forwarding استفاده کنید (پایین را ببینید)
+## After installation
 
-</div>
+| | |
+| --- | --- |
+| Files | `/opt/pasarguard` |
+| Config | `/opt/pasarguard/.env` |
+| Data | `/var/lib/pasarguard` |
+| Dashboard | `https://YOUR_DOMAIN:8000/dashboard/` |
 
----
+Create the owner account:
+
+```bash
+pasarguard cli generate-temp-key
+```
+
+Enter the key it prints on the dashboard login page.
+
+The dashboard needs a TLS certificate — see upstream's
+[certificate guide](https://docs.pasarguard.org/en/examples/issue-ssl-certificate).
+To try it without a domain, forward the port over SSH:
 
 ```bash
 ssh -L 8000:localhost:8000 user@serverip
 ```
 
-سپس دسترسی: `http://localhost:8000/dashboard/`
+then open `http://localhost:8000/dashboard/`. This is for testing only; access ends
+when the SSH session closes.
 
-> ⚠️ **فقط برای تست** - با بستن ترمینال SSH دسترسی خود را از دست خواهید داد.
-
-### 🔧 مراحل بعدی:
+## Running from source
 
 ```bash
-# ایجاد کلید موقت یک‌بارمصرف برای راه‌اندازی حساب owner
-pasarguard cli generate-temp-key
-
-# از این کلید در صفحه ورود داشبورد برای ایجاد حساب owner استفاده کنید
-
-# دریافت راهنما
-pasarguard --help
+git clone https://github.com/NexusGuide/Nexus-panel.git
+cd Nexus-panel
+docker build -t nexus-panel:dev .
 ```
 
----
+Then install with `--image nexus-panel:dev`.
 
-# 📚 مستندات
+## Documentation
 
-<div align="right">
+Everything inherited from upstream is documented in PasarGuard's own docs, which
+apply unchanged:
 
-**📖 مستندات رسمی** - راهنماهای کامل در دسترس:
+[English](https://docs.pasarguard.org/en) ·
+[فارسی](https://docs.pasarguard.org/fa) ·
+[Русский](https://docs.pasarguard.org/ru) ·
+[简体中文](https://docs.pasarguard.org/zh-cn)
 
-🇺🇸 **[English](https://PasarGuard.github.io/PasarGuard)**
+What this fork adds is documented in [FREE_CONFIGS.md](FREE_CONFIGS.md).
 
-🇮🇷 **[فارسی](https://PasarGuard.github.io/PasarGuard)**
+## Credits
 
-🇷🇺 **[Русский](https://PasarGuard.github.io/PasarGuard)**
+Nexus Panel exists because of [PasarGuard](https://github.com/PasarGuard/panel) — the
+panel, the dashboard, the installer and the node protocol are all their work, and this
+fork tracks their releases. If the base panel is useful to you, consider
+[supporting them](https://donate.pasarguard.org).
 
-</div>
+The default community source lists are public collections maintained by their own
+authors, credited in [FREE_CONFIGS.md](FREE_CONFIGS.md).
 
-> **مشارکت:** در بهبود مستندات در [GitHub](https://github.com/PasarGuard/PasarGuard.github.io) کمک کنید
+## License
 
----
-
-# 💖 حمایت مالی
-
-<div align="right">
-
-> **حمایت از توسعه پاسارگارد**
-
-اگر پاسارگارد به شما کمک می‌کند، از توسعه آن حمایت کنید:
-
-[![Donate](https://img.shields.io/badge/Donate-Support%20Us-green?style=for-the-badge)](http://donate.pasarguard.org)
-
-**از حمایت شما متشکریم!** 💖
-
-</div>
-
----
-
-<p align="center">
-  Made with ❤️ for Internet freedom
-</p>
+[AGPL-3.0](LICENSE), the same as upstream.

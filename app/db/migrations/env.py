@@ -10,7 +10,11 @@ from alembic import context
 
 from app.db.base import Base
 from app.db.compiles_types import SqliteCompatibleBigInteger
-from config import database_settings
+# Importing app.db above registers the upstream tables on Base.metadata; this
+# fork's tables live outside that package and must be imported here too.
+# Without it, autogenerate compares a database that has them against a metadata
+# that does not, and "alembic check" reports every one of them as a dropped table.
+import app.free_configs.models  # noqa: E402,F401 - imported for its side effect
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

@@ -1,3 +1,4 @@
+import { REPO_URL } from '@/constants/Project'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useVersionCheck } from '@/hooks/use-version-check'
 import { cn } from '@/lib/utils'
@@ -18,7 +19,10 @@ export function VersionBadge({ currentVersion, className }: VersionBadgeProps) {
     return null
   }
 
-  const releaseLink = releaseUrl || 'https://github.com/PasarGuard/panel/releases/latest'
+  // Falls back to this fork's releases, not upstream's: an owner who clicks
+  // "a new version is out" should land on the release they are being told
+  // about, not on a different project's changelog.
+  const releaseLink = releaseUrl || `${REPO_URL}/releases/latest`
   const showText = isMobile || state === 'expanded'
   const showBadge = state === 'collapsed' && !isMobile
 

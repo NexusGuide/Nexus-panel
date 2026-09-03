@@ -12,7 +12,7 @@ import { toast } from 'sonner'
 import { useSystemVersion } from '@/hooks/use-system-version'
 import { useAdmin } from '@/hooks/use-admin'
 import { isOwner } from '@/utils/rbac'
-import { UPDATE_COMMAND } from '@/constants/Project'
+import { REPO_URL, UPDATE_COMMAND } from '@/constants/Project'
 
 const VERSION_BANNER_STORAGE_KEY = 'version_update_banner_closed'
 const HOURS_TO_HIDE = 24
@@ -121,7 +121,10 @@ export function VersionUpdateBanner() {
 
   if (!isOwnerAdmin || isLoading || !hasUpdate || !isVisible || !latestVersion || !normalizedVersion) return null
 
-  const releaseLink = releaseUrl || 'https://github.com/PasarGuard/panel/releases/latest'
+  // Falls back to this fork's releases, not upstream's: an owner who clicks
+  // "a new version is out" should land on the release they are being told
+  // about, not on a different project's changelog.
+  const releaseLink = releaseUrl || `${REPO_URL}/releases/latest`
 
   return (
     <div

@@ -1,6 +1,6 @@
 {
-  "name": "",
-  "short_name": "",
+  "name": "Nexus Panel",
+  "short_name": "Nexus",
   "icons": [
     {
       "src": "/statics/favicon/logo-pwa.png",

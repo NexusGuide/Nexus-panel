@@ -273,8 +273,8 @@
     <button id="saveSettings" class="primary" data-i18n="settings.save">Save settings</button>
     <button id="resetSettings" data-i18n="settings.reset">Reset all to .env defaults</button>
   </div>
-  <p class="hint" style="margin-top:12px">
-    An empty field means "use the value from <code>.env</code>". <code>FREE_CONFIGS_ENABLED</code>
+  <p class="hint" style="margin-top:12px" data-i18n="settings.lead">
+    An empty field means "use the value from .env". FREE_CONFIGS_ENABLED
     is not here on purpose: this page can switch the feature off, never on, so a panel that never
     opted in cannot be enabled from a web form.
   </p>
@@ -446,6 +446,32 @@
       'run.noSources': 'No sources are switched on, so there was nothing to fetch. Add one on the Sources tab.',
       'run.finished': 'Rebuild finished',
       'run.stillRunning': 'The rebuild is still going after ten minutes. Check the panel logs.',
+      'set.default': 'Default ({v})', 'set.on': 'On', 'set.off': 'Off',
+      'set.featureIs': 'The feature is', 'set.active': 'active',
+      'set.switchedOff': 'switched off from this page',
+      'set.killSwitch': 'stop serving free configs',
+      'set.envOff': 'FREE_CONFIGS_ENABLED is false in .env,',
+      'set.envOffHow': 'so nothing here is served yet. Set it to true in /opt/nexus/.env and run `nexus restart`.',
+      'set.saved': 'Settings saved', 'set.reset': 'Back to .env defaults',
+      'set.confirmReset': 'Put every setting back on its .env default?',
+      'set.mode': 'Who gets them',
+      'set.mode.hint': 'all = every user; groups = only members of opted-in groups',
+      'set.serve_to': 'User states served',
+      'set.serve_to.hint': 'Traffic through free configs cannot be metered - it never touches this panel - so an expired user who keeps receiving them keeps working forever. "active" is the safe choice; loosen it only if free configs are your whole offering.',
+      'set.remark_prefix': 'Label prefix',
+      'set.remark_prefix.hint': 'Prepended to each free entry so users can tell them apart',
+      'set.max_per_subscription': 'Configs per subscription',
+      'set.max_per_subscription.hint': 'Fastest first. 0 = every enabled config',
+      'set.max_per_endpoint': 'Configs per server',
+      'set.max_per_endpoint.hint': 'They all fail together, so a handful is as useful as thirty. 0 = no limit',
+      'set.refresh_interval': 'Rebuild every (seconds)',
+      'set.refresh_interval.hint': 'Takes effect within five minutes - no restart needed',
+      'set.max_configs': 'Configs checked per rebuild', 'set.max_configs.hint': '0 = all of them',
+      'set.health_check': 'Check reachability',
+      'set.health_check.hint': 'Off keeps every harvested config, unchecked',
+      'set.tcp_timeout': 'Connect timeout (seconds)',
+      'set.max_concurrency': 'Parallel checks',
+      'set.fetch_timeout': 'Source download timeout (seconds)',
       'stat.inPool': 'In pool', 'stat.reachable': 'Reachable', 'stat.off': 'Switched off',
       'stat.manual': 'Added by hand', 'stat.waiting': 'Waiting to choose', 'stat.perSub': 'Per subscription',
       'toast.saved': 'Saved', 'toast.deleted': 'Deleted', 'toast.nothingSelected': 'Nothing selected',
@@ -515,6 +541,33 @@
       'run.noSources': 'هیچ منبعی روشن نیست، پس چیزی برای گرفتن نبود. از تب منابع یکی اضافه کن.',
       'run.finished': 'بازسازی تمام شد',
       'run.stillRunning': 'بازسازی بعد از ده دقیقه هنوز تمام نشده. لاگ پنل را ببین.',
+      'settings.lead': 'فیلد خالی یعنی «همان مقدار .env استفاده شود». FREE_CONFIGS_ENABLED عمداً اینجا نیست: این صفحه می‌تواند قابلیت را خاموش کند، هرگز روشن — تا پنلی که از اول این را نخواسته با یک فرم وب فعال نشود.',
+      'set.default': 'پیش‌فرض ({v})', 'set.on': 'روشن', 'set.off': 'خاموش',
+      'set.featureIs': 'وضعیت قابلیت:', 'set.active': 'فعال',
+      'set.switchedOff': 'از همین صفحه خاموش شده',
+      'set.killSwitch': 'ارائه‌ی کانفیگ‌های رایگان متوقف شود',
+      'set.envOff': 'مقدار FREE_CONFIGS_ENABLED در .env روی false است،',
+      'set.envOffHow': 'پس هنوز چیزی از اینجا ارائه نمی‌شود. در /opt/nexus/.env آن را true کن و `nexus restart` بزن.',
+      'set.saved': 'تنظیمات ذخیره شد', 'set.reset': 'به مقادیر .env برگشت',
+      'set.confirmReset': 'همه‌ی تنظیمات به مقدار پیش‌فرض .env برگردد؟',
+      'set.mode': 'چه کسانی دریافت می‌کنند',
+      'set.mode.hint': 'all = همه‌ی کاربران؛ groups = فقط اعضای گروه‌هایی که انتخاب شده‌اند',
+      'set.serve_to': 'کاربران در چه وضعیتی',
+      'set.serve_to.hint': 'ترافیک کانفیگ‌های رایگان قابل شمارش نیست — اصلاً از این پنل رد نمی‌شود — پس کاربری که منقضی شده و همچنان آن‌ها را می‌گیرد تا ابد کارش راه می‌افتد. گزینه‌ی امن «active» است؛ فقط اگر کل ارائه‌ات همین کانفیگ‌های رایگان است بازترش کن.',
+      'set.remark_prefix': 'پیشوند برچسب',
+      'set.remark_prefix.hint': 'ابتدای نام هر کانفیگ رایگان می‌آید تا کاربر آن‌ها را تشخیص بدهد',
+      'set.max_per_subscription': 'تعداد کانفیگ در هر اشتراک',
+      'set.max_per_subscription.hint': 'سریع‌ترین‌ها اول. صفر یعنی همه‌ی کانفیگ‌های روشن',
+      'set.max_per_endpoint': 'تعداد کانفیگ از هر سرور',
+      'set.max_per_endpoint.hint': 'همه با هم از کار می‌افتند، پس چندتا به‌اندازه‌ی سی‌تا فایده دارد. صفر یعنی بی‌حد',
+      'set.refresh_interval': 'هر چند ثانیه بازسازی شود',
+      'set.refresh_interval.hint': 'ظرف پنج دقیقه اثر می‌کند — نیازی به ری‌استارت نیست',
+      'set.max_configs': 'تعداد کانفیگ بررسی‌شده در هر بازسازی', 'set.max_configs.hint': 'صفر یعنی همه',
+      'set.health_check': 'بررسی در دسترس بودن',
+      'set.health_check.hint': 'خاموش یعنی هر کانفیگ جمع‌آوری‌شده بدون بررسی نگه داشته شود',
+      'set.tcp_timeout': 'مهلت اتصال (ثانیه)',
+      'set.max_concurrency': 'بررسی‌های هم‌زمان',
+      'set.fetch_timeout': 'مهلت دانلود منبع (ثانیه)',
       'field.address': 'آدرس (سرور یا آی‌پی CDN)', 'field.port': 'پورت', 'field.sni': 'SNI',
       'field.host': 'هدر Host', 'field.path': 'مسیر (path)', 'field.type': 'ترنسپورت (شبکه)',
       'field.net': 'ترنسپورت (شبکه)', 'field.headerType': 'نوع هدر', 'field.tls': 'TLS',
@@ -599,6 +652,33 @@
       'run.noSources': 'Ни один источник не включён, загружать было нечего. Добавьте его во вкладке «Источники».',
       'run.finished': 'Перестройка завершена',
       'run.stillRunning': 'Перестройка идёт уже десять минут. Посмотрите логи панели.',
+      'settings.lead': 'Пустое поле означает «взять значение из .env». FREE_CONFIGS_ENABLED здесь нет намеренно: эта страница может только выключить функцию, но не включить — панель, которая её не включала, нельзя активировать из веб-формы.',
+      'set.default': 'По умолчанию ({v})', 'set.on': 'Вкл', 'set.off': 'Выкл',
+      'set.featureIs': 'Состояние функции:', 'set.active': 'активна',
+      'set.switchedOff': 'выключена с этой страницы',
+      'set.killSwitch': 'перестать раздавать бесплатные конфиги',
+      'set.envOff': 'FREE_CONFIGS_ENABLED в .env равно false,',
+      'set.envOffHow': 'поэтому пока ничего не раздаётся. Поставьте true в /opt/nexus/.env и выполните `nexus restart`.',
+      'set.saved': 'Настройки сохранены', 'set.reset': 'Возврат к значениям .env',
+      'set.confirmReset': 'Вернуть все настройки к значениям из .env?',
+      'set.mode': 'Кто их получает',
+      'set.mode.hint': 'all = все пользователи; groups = только участники выбранных групп',
+      'set.serve_to': 'В каком состоянии пользователи',
+      'set.serve_to.hint': 'Трафик через бесплатные конфиги нельзя учесть — он не проходит через эту панель — поэтому истёкший пользователь, продолжающий их получать, будет работать вечно. «active» — безопасный выбор; ослабляйте только если бесплатные конфиги и есть всё ваше предложение.',
+      'set.remark_prefix': 'Префикс названия',
+      'set.remark_prefix.hint': 'Добавляется к каждому бесплатному конфигу, чтобы их было видно',
+      'set.max_per_subscription': 'Конфигов на подписку',
+      'set.max_per_subscription.hint': 'Сначала самые быстрые. 0 = все включённые',
+      'set.max_per_endpoint': 'Конфигов с одного сервера',
+      'set.max_per_endpoint.hint': 'Они падают все разом, так что несколько не хуже тридцати. 0 = без ограничения',
+      'set.refresh_interval': 'Перестраивать каждые (секунд)',
+      'set.refresh_interval.hint': 'Вступает в силу в течение пяти минут — перезапуск не нужен',
+      'set.max_configs': 'Конфигов проверять за перестройку', 'set.max_configs.hint': '0 = все',
+      'set.health_check': 'Проверять доступность',
+      'set.health_check.hint': 'Выключено — все собранные конфиги сохраняются без проверки',
+      'set.tcp_timeout': 'Таймаут подключения (секунд)',
+      'set.max_concurrency': 'Параллельных проверок',
+      'set.fetch_timeout': 'Таймаут загрузки источника (секунд)',
       'field.address': 'Адрес (сервер или IP CDN)', 'field.port': 'Порт', 'field.sni': 'SNI',
       'field.host': 'Заголовок Host', 'field.path': 'Путь', 'field.type': 'Транспорт (сеть)',
       'field.net': 'Транспорт (сеть)', 'field.headerType': 'Тип заголовка', 'field.tls': 'TLS',
@@ -683,6 +763,33 @@
       'run.noSources': '没有启用任何订阅源，所以没有内容可抓取。请到「订阅源」标签页添加。',
       'run.finished': '重建完成',
       'run.stillRunning': '重建已经进行十分钟仍未结束，请查看面板日志。',
+      'settings.lead': '留空表示「使用 .env 中的值」。FREE_CONFIGS_ENABLED 故意不在此处：本页只能关闭该功能，不能开启，这样从未启用过的面板就无法通过网页表单被打开。',
+      'set.default': '默认（{v}）', 'set.on': '开', 'set.off': '关',
+      'set.featureIs': '功能状态：', 'set.active': '已启用',
+      'set.switchedOff': '已从本页关闭',
+      'set.killSwitch': '停止提供免费配置',
+      'set.envOff': '.env 中 FREE_CONFIGS_ENABLED 为 false，',
+      'set.envOffHow': '所以目前不会提供任何内容。请在 /opt/nexus/.env 中改为 true 并执行 `nexus restart`。',
+      'set.saved': '设置已保存', 'set.reset': '已恢复为 .env 默认值',
+      'set.confirmReset': '将所有设置恢复为 .env 中的默认值？',
+      'set.mode': '谁可以获得',
+      'set.mode.hint': 'all = 所有用户；groups = 仅已加入分组的成员',
+      'set.serve_to': '面向哪些状态的用户',
+      'set.serve_to.hint': '免费配置的流量无法计量 —— 它根本不经过本面板 —— 所以已过期却仍在收到它们的用户会一直可用。「active」是稳妥的选择；只有当免费配置就是你的全部服务时才放宽。',
+      'set.remark_prefix': '名称前缀',
+      'set.remark_prefix.hint': '加在每条免费配置前，方便用户区分',
+      'set.max_per_subscription': '每个订阅的配置数',
+      'set.max_per_subscription.hint': '最快的优先。0 = 所有已启用的配置',
+      'set.max_per_endpoint': '每台服务器的配置数',
+      'set.max_per_endpoint.hint': '它们会一起失效，所以几条和三十条一样有用。0 = 不限制',
+      'set.refresh_interval': '重建间隔（秒）',
+      'set.refresh_interval.hint': '五分钟内生效 —— 无需重启',
+      'set.max_configs': '每次重建检测的配置数', 'set.max_configs.hint': '0 = 全部',
+      'set.health_check': '检测可达性',
+      'set.health_check.hint': '关闭则保留所有抓取到的配置，不做检测',
+      'set.tcp_timeout': '连接超时（秒）',
+      'set.max_concurrency': '并行检测数',
+      'set.fetch_timeout': '订阅源下载超时（秒）',
       'field.address': '地址（服务器或 CDN IP）', 'field.port': '端口', 'field.sni': 'SNI',
       'field.host': 'Host 头', 'field.path': '路径', 'field.type': '传输方式（网络）',
       'field.net': '传输方式（网络）', 'field.headerType': '伪装类型', 'field.tls': 'TLS',
@@ -1106,60 +1213,69 @@
 
   // ---------------------------------------------------------------- settings
 
+  // Label and hint are looked up per language rather than written here, so the
+  // settings form follows the panel like every other tab. The English text
+  // lives in I18N.en beside the other JavaScript-only strings.
   const FIELDS = [
-    ['mode', 'Who gets them', 'select', ['all', 'groups'], 'all = every user; groups = only members of opted-in groups'],
-    ['serve_to', 'User states served', 'select', ['active', 'not_disabled', 'everyone'],
-      'Traffic through free configs cannot be metered - it never touches this panel - so an expired user who keeps receiving them keeps working forever. "active" is the safe choice; loosen it only if free configs are your whole offering.'],
-    ['remark_prefix', 'Label prefix', 'text', null, 'Prepended to each free entry so users can tell them apart'],
-    ['max_per_subscription', 'Configs per subscription', 'number', null, 'Fastest first. 0 = every enabled config'],
-    ['max_per_endpoint', 'Configs per server', 'number', null, 'They all fail together, so a handful is as useful as thirty. 0 = no limit'],
-    ['refresh_interval', 'Rebuild every (seconds)', 'number', null, 'Takes effect within five minutes - no restart needed'],
-    ['max_configs', 'Configs checked per rebuild', 'number', null, '0 = all of them'],
-    ['health_check', 'Check reachability', 'checkbox', null, 'Off keeps every harvested config, unchecked'],
-    ['tcp_timeout', 'Connect timeout (seconds)', 'number', null, ''],
-    ['max_concurrency', 'Parallel checks', 'number', null, ''],
-    ['fetch_timeout', 'Source download timeout (seconds)', 'number', null, ''],
+    ['mode', 'select', ['all', 'groups']],
+    ['serve_to', 'select', ['active', 'not_disabled', 'everyone']],
+    ['remark_prefix', 'text', null],
+    ['max_per_subscription', 'number', null],
+    ['max_per_endpoint', 'number', null],
+    ['refresh_interval', 'number', null],
+    ['max_configs', 'number', null],
+    ['health_check', 'checkbox', null],
+    ['tcp_timeout', 'number', null],
+    ['max_concurrency', 'number', null],
+    ['fetch_timeout', 'number', null],
   ];
+
+  function fieldHint(key) {
+    const hint = t('set.' + key + '.hint');
+    return hint === 'set.' + key + '.hint' ? '' : hint;
+  }
 
   async function loadSettings() {
     const data = await api('/settings');
     state.settings = data;
 
     const note = document.getElementById('envNote');
+    note.hidden = false;
     if (!data.env_enabled) {
-      note.hidden = false;
-      note.innerHTML = '<strong>FREE_CONFIGS_ENABLED is false in .env</strong>, so nothing here is served yet. ' +
-        'Set it to true in <code>/opt/pasarguard/.env</code> and restart the panel.';
+      note.innerHTML = `<strong>${esc(t('set.envOff'))}</strong> ${esc(t('set.envOffHow'))}`;
     } else {
-      note.hidden = false;
-      note.innerHTML = 'The feature is <strong>' + (data.stored.disabled ? 'switched off from this page' : 'active') +
-        '</strong>. <label style="margin-inline-start:8px"><input type="checkbox" id="killSwitch" ' +
-        (data.stored.disabled ? 'checked' : '') + '> stop serving free configs</label>';
+      const stateWord = data.stored.disabled ? t('set.switchedOff') : t('set.active');
+      note.innerHTML = esc(t('set.featureIs')) + ' <strong>' + esc(stateWord) + '</strong>. ' +
+        '<label style="margin-inline-start:8px"><input type="checkbox" id="killSwitch" ' +
+        (data.stored.disabled ? 'checked' : '') + '> ' + esc(t('set.killSwitch')) + '</label>';
     }
 
-    document.getElementById('settingsForm').innerHTML = FIELDS.map(([key, label, type, options, hint]) => {
+    const dflt = value => t('set.default').replace('{v}', value);
+
+    document.getElementById('settingsForm').innerHTML = FIELDS.map(([key, type, options]) => {
       const stored = data.stored[key];
       const fallback = data.defaults[key];
+      const hint = fieldHint(key);
       let control;
       if (type === 'select') {
-        control = `<select id="f_${key}"><option value="">Default (${esc(fallback)})</option>` +
+        control = `<select id="f_${key}"><option value="">${esc(dflt(fallback))}</option>` +
           options.map(o => `<option value="${o}" ${stored === o ? 'selected' : ''}>${o}</option>`).join('') + '</select>';
       } else if (type === 'checkbox') {
         control = `<select id="f_${key}">
-            <option value="" ${stored === null ? 'selected' : ''}>Default (${fallback ? 'on' : 'off'})</option>
-            <option value="true" ${stored === true ? 'selected' : ''} data-i18n="col.on">On</option>
-            <option value="false" ${stored === false ? 'selected' : ''}>Off</option>
+            <option value="" ${stored === null ? 'selected' : ''}>${esc(dflt(fallback ? t('set.on') : t('set.off')))}</option>
+            <option value="true" ${stored === true ? 'selected' : ''}>${esc(t('set.on'))}</option>
+            <option value="false" ${stored === false ? 'selected' : ''}>${esc(t('set.off'))}</option>
           </select>`;
       } else {
-        control = `<input id="f_${key}" type="${type}" value="${stored === null || stored === undefined ? '' : esc(stored)}" placeholder="Default (${esc(fallback)})">`;
+        control = `<input id="f_${key}" type="${type}" value="${stored === null || stored === undefined ? '' : esc(stored)}" placeholder="${esc(dflt(fallback))}">`;
       }
-      return `<label class="field"><span>${esc(label)}</span>${control}${hint ? `<div class="hint">${esc(hint)}</div>` : ''}</label>`;
+      return `<label class="field"><span>${esc(t('set.' + key))}</span>${control}${hint ? `<div class="hint">${esc(hint)}</div>` : ''}</label>`;
     }).join('');
   }
 
   document.getElementById('saveSettings').onclick = async () => {
     const payload = {};
-    for (const [key, , type] of FIELDS) {
+    for (const [key, type] of FIELDS) {
       const raw = document.getElementById('f_' + key).value;
       if (raw === '') { payload[key] = null; continue; }
       if (type === 'number') payload[key] = Number(raw);
@@ -1170,18 +1286,18 @@
     if (kill) payload.disabled = kill.checked;
     try {
       await api('/settings', { method: 'PUT', body: JSON.stringify(payload) });
-      toast('Settings saved');
+      toast(t('set.saved'));
       await loadSettings(); loadStatus();
     } catch (err) { toast(err.message); }
   };
 
   document.getElementById('resetSettings').onclick = async () => {
-    if (!confirm('Put every setting back on its .env default?')) return;
+    if (!confirm(t('set.confirmReset'))) return;
     const payload = Object.fromEntries(FIELDS.map(([key]) => [key, null]));
     payload.disabled = false;
     try {
       await api('/settings', { method: 'PUT', body: JSON.stringify(payload) });
-      toast('Back to .env defaults');
+      toast(t('set.reset'));
       await loadSettings(); loadStatus();
     } catch (err) { toast(err.message); }
   };

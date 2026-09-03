@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# Installer for pasarguard-free-configs.
+# Installer for nexus-panel.
 #
-#   sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/Mezixa/pasarguard-free-configs/main/install.sh)" @ install
+#   sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/nexus-panel/main/install.sh)" @ install
 #
 # This is deliberately a thin wrapper around PasarGuard's own installer rather
 # than a second installer. Theirs is ~1750 lines and already handles five
@@ -31,14 +31,14 @@
 #
 # Fork-specific options:
 #   --image <ref>   use this image instead of the published one, e.g. a local
-#                   build:  --image pasarguard-free-configs:dev
+#                   build:  --image nexus-panel:dev
 #   --no-seed       skip adding the default community sources
 #   --no-enable     install the fork's image but leave the feature switched off
 #
 set -euo pipefail
 
-REPO="Mezixa/pasarguard-free-configs"
-IMAGE="ghcr.io/mezixa/pasarguard-free-configs:latest"
+REPO="NexusGuide/nexus-panel"
+IMAGE="ghcr.io/nexusguide/nexus-panel:latest"
 UPSTREAM_INSTALLER="https://github.com/PasarGuard/scripts/raw/main/pasarguard.sh"
 
 APP_NAME="pasarguard"
@@ -78,9 +78,13 @@ apply_fork() {
     # re-applying finds whatever a previous apply wrote - so matching only the
     # upstream name meant you could switch to the fork once and never again
     # (say, from a local build to the published image).
+    # Derived from IMAGE rather than hardcoded, so renaming the project means
+    # editing one line at the top and nothing here.
+    local image_name="${IMAGE%%:*}"
+    image_name="${image_name##*/}"
     # delimiter is '#', not '|', because the pattern needs '|' for alternation
     sed -i -E \
-        "s#^([[:space:]]*image:[[:space:]]*)(pasarguard/panel|.*pasarguard-free-configs).*\$#\1${IMAGE}#" \
+        "s#^([[:space:]]*image:[[:space:]]*)(pasarguard/panel|.*${image_name}).*\$#\1${IMAGE}#" \
         "$COMPOSE_FILE"
 
     if ! grep -q "$IMAGE" "$COMPOSE_FILE"; then
@@ -155,7 +159,7 @@ EOF
         warn "if the GHCR package is still private, make it public:"
         warn "  https://github.com/${REPO} -> Packages -> Package settings -> Change visibility"
         warn "or build it yourself and re-run with --image <your-tag>:"
-        warn "  git clone https://github.com/${REPO}.git && cd pasarguard-free-configs"
+        warn "  git clone https://github.com/${REPO}.git && cd nexus-panel"
         warn "  docker build --network=host -t ${IMAGE} ."
         die "aborting before restarting, so your panel keeps running on its current image"
     fi

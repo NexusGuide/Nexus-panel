@@ -1,3 +1,25 @@
+> ### Nexus Panel — an unofficial fork of PasarGuard
+>
+> This repository is **not** the official PasarGuard project and is not endorsed
+> by or affiliated with the PasarGuard team. It is a fork maintained by
+> [NexusGuide](https://github.com/NexusGuide), tracking upstream
+> [PasarGuard/panel](https://github.com/PasarGuard/panel) with additions of its
+> own. Please report problems here, not to them.
+>
+> **What this fork adds**
+>
+> - **Free Configs** — harvests proxy URIs from public community lists, checks
+>   them, and appends them to the subscription output of chosen groups, with a
+>   panel page to manage the pool, edit a config field by field, and decide which
+>   group gets what. See [FREE_CONFIGS.md](FREE_CONFIGS.md).
+>
+> Everything is off unless switched on, so with no extra configuration this
+> behaves exactly like upstream.
+>
+> Licensed **AGPL-3.0**, the same as upstream. The original README follows.
+
+---
+
 <p align="center">
   <a href="https://github.com/PasarGuard/panel" target="_blank" rel="noopener noreferrer">
     <picture>

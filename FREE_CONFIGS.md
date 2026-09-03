@@ -90,7 +90,7 @@ sources (DB)  ──fetch──▶  parse & dedupe  ──TCP health check──
 On a fresh VPS:
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/Mezixa/pasarguard-free-configs/main/install.sh)" @ install
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/nexus-panel/main/install.sh)" @ install
 ```
 
 This is a thin wrapper around **PasarGuard's own installer**, not a second one.
@@ -127,16 +127,16 @@ status | cli | backup | uninstall`. Only these are the wrapper's:
 > the version is hardcoded there. Use `install.sh update`, or run
 > `install.sh apply` afterwards.
 
-> The image is `ghcr.io/mezixa/pasarguard-free-configs:latest`, published by
+> The image is `ghcr.io/nexusguide/nexus-panel:latest`, published by
 > [`build-fork.yml`](.github/workflows/build-fork.yml) on every push to `main`.
 > **After the first CI run, make the GHCR package public** (repo → Packages →
 > Package settings → Change visibility), or the pull fails for everyone else.
 > Until then, build it yourself and pass `--image`:
 > ```bash
-> git clone https://github.com/Mezixa/pasarguard-free-configs.git
-> cd pasarguard-free-configs
-> docker build --network=host -t pasarguard-free-configs:dev .
-> sudo bash install.sh install --image pasarguard-free-configs:dev
+> git clone https://github.com/NexusGuide/nexus-panel.git
+> cd nexus-panel
+> docker build --network=host -t nexus-panel:dev .
+> sudo bash install.sh install --image nexus-panel:dev
 > ```
 > (`--network=host` because Docker's bridge network cannot resolve DNS on many
 > VPSes, which makes `apt-get` inside the build fail.)

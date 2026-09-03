@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
-PasarGuard CLI Wrapper
-This script provides a simple entry point for the PasarGuard CLI.
+Nexus Panel CLI wrapper.
+
+A thin entry point so the CLI can be run as a file from inside the container,
+which is what `nexus cli` does.
 """
 
 import sys
@@ -17,7 +19,7 @@ try:
     app()
 except ImportError as e:
     print(f"Error importing CLI: {e}")
-    print("Make sure you're running this from the PasarGuard project directory.")
+    print("Make sure you're running this from the panel's project directory.")
     sys.exit(1)
 except Exception as e:
     print(f"Error running CLI: {e}")

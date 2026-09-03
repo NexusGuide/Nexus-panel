@@ -142,15 +142,25 @@ Then install with `--image nexus-panel:dev`.
 
 ## Documentation
 
-Everything inherited from upstream is documented in PasarGuard's own docs, which
-apply unchanged:
+This project's own documentation lives in [docs/](docs/):
+
+- [Installing](docs/install.md) — databases, TLS, updating, backups, coming from
+  PasarGuard, and what to do when something is wrong
+- [The `nexus` command](docs/cli.md) — every subcommand and flag
+- [Free configs](FREE_CONFIGS.md) — the feature this fork exists for
+
+Users, admins, groups, nodes, hosts, templates and the core editor are inherited
+from PasarGuard and behave here exactly as they do there, so their documentation
+covers those screens:
 
 [English](https://docs.pasarguard.org/en) ·
 [فارسی](https://docs.pasarguard.org/fa) ·
 [Русский](https://docs.pasarguard.org/ru) ·
 [简体中文](https://docs.pasarguard.org/zh-cn)
 
-What this fork adds is documented in [FREE_CONFIGS.md](FREE_CONFIGS.md).
+Skip its installation, update and CLI pages. Those describe a different install
+— `/opt/pasarguard`, a `pasarguard` command — and following them on a Nexus
+Panel machine gets you a second, unrelated panel. Use the two pages above.
 
 ## Credits
 

@@ -94,18 +94,22 @@ content, and content is managed from the panel — Free Configs → Sources →
 | `--image <ref>` | Use a different image, e.g. a local build: `--image nexus-panel:dev` |
 | `--no-enable` | Install the image but leave the free-config feature switched off |
 
-### Other subcommands
+## Managing it
 
-```bash
-# re-apply the fork after an official update reverted the image
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-panel/main/install.sh)" @ apply
+The installer puts a `nexus` command on the server:
 
-# official update, then re-apply the fork
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-panel/main/install.sh)" @ update
-```
+| Command | What it does |
+| --- | --- |
+| `nexus apply` | Pull the latest Nexus Panel image and restart |
+| `nexus update` | Take an upstream release, then re-apply Nexus Panel |
+| `nexus refresh` | Rebuild the free-config pool now |
+| `nexus logs` / `restart` / `status` / `cli` / `backup` / `uninstall` | Passed through to the panel's own command |
 
-Everything else is handled by the `pasarguard` command the official installer
-provides: `pasarguard logs`, `restart`, `status`, `cli`, `backup`, `uninstall`.
+Nexus Panel is built on PasarGuard, so its installer still creates `/opt/pasarguard`
+and a `pasarguard` command — renaming those would mean forking ~1750 lines of installer
+and breaking every existing install's paths, backups and systemd unit. `nexus` is a
+front for it. One consequence worth knowing: running `pasarguard update` directly puts
+the upstream image back, so use `nexus update` instead.
 
 ## After installation
 
@@ -119,7 +123,7 @@ provides: `pasarguard logs`, `restart`, `status`, `cli`, `backup`, `uninstall`.
 Create the owner account:
 
 ```bash
-pasarguard cli generate-temp-key
+nexus cli generate-temp-key
 ```
 
 Enter the key it prints on the dashboard login page.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PasarGuard CLI"""
+"""Nexus Panel CLI"""
 
 import typer
 
@@ -7,8 +7,8 @@ from cli import console
 from cli.admin import generate_temp_key
 
 app = typer.Typer(
-    name="PasarGuard",
-    help="PasarGuard CLI",
+    name="Nexus Panel",
+    help="Nexus Panel CLI",
     add_completion=False,
     rich_markup_mode="rich",
 )

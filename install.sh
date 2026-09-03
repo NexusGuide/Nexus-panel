@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Installer for nexus-panel.
+# Installer for Nexus Panel.
 #
 #   sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-panel/main/install.sh)" @ install
 #
@@ -22,12 +22,18 @@
 #
 # Subcommands:
 #   install    official install, then apply this fork
-#   apply      re-apply the fork to an existing PasarGuard install
-#              (run this after an official update reverts the image)
+#   apply      re-apply Nexus Panel to an existing install
+#              (run this after an upstream update reverts the image)
 #   update     official update, then re-apply the fork
 #
-# Anything else is handled by the official `pasarguard` command itself:
-#   pasarguard logs | restart | status | cli | backup | uninstall ...
+# Day-to-day management is the `nexus` command this installs:
+#   nexus logs | restart | status | cli | backup | uninstall ...
+#
+# `nexus` is a thin front for the `pasarguard` command that upstream's
+# installer creates. That command, /opt/pasarguard and the container names
+# keep their upstream spelling on purpose: they are created by upstream's
+# installer, and renaming them would mean forking those ~1750 lines and
+# breaking every backup, path and systemd unit an existing install has.
 #
 # Fork-specific options:
 #   --image <ref>   use this image instead of the published one, e.g. a local
@@ -96,14 +102,14 @@ run_upstream() {
     # $1 = subcommand, rest = passthrough flags
     local script
     script="$(mktemp)"
-    info "fetching the official PasarGuard installer ..."
+    info "fetching the upstream installer that Nexus Panel builds on ..."
     curl -fsSL "$UPSTREAM_INSTALLER" -o "$script" || die "could not download ${UPSTREAM_INSTALLER}"
     chmod +x "$script"
-    info "running the official installer: $*"
+    info "running the upstream installer: $*"
     warn "it ends by tailing the container logs - press Ctrl+C there and this"
-    warn "script will carry on and apply the fork"
+    warn "script will carry on and finish setting up Nexus Panel"
 
-    # The official installer finishes with `docker compose logs -f`, which blocks
+    # The upstream installer finishes with `docker compose logs -f`, which blocks
     # until interrupted. Without a trap, that Ctrl+C reaches this script too and
     # kills it before apply_fork runs - which looks exactly like a successful
     # install of upstream, with none of the fork in it. A *handled* trap (rather
@@ -118,13 +124,13 @@ run_upstream() {
     # installer ends. Anything else is a real failure.
     if [ "$status" -ne 0 ] && [ "$status" -ne 130 ]; then
         rm -f "$script"
-        die "the official installer exited with status ${status}"
+        die "the upstream installer exited with status ${status}"
     fi
     rm -f "$script"
 }
 
 apply_fork() {
-    [ -f "$COMPOSE_FILE" ] || die "no PasarGuard install found at ${COMPOSE_FILE} - run \`install\` first"
+    [ -f "$COMPOSE_FILE" ] || die "no panel found at ${COMPOSE_FILE} - run \`install\` first"
 
     info "pointing the compose file at ${IMAGE} ..."
     # A fresh install has upstream's hardcoded pasarguard/panel:<version>, but
@@ -231,26 +237,72 @@ EOF
     else
         compose up -d
     fi
+
+    install_command
+}
+
+# The panel's own command is `pasarguard`, created by upstream's installer along
+# with /opt/pasarguard, the systemd unit and the backup paths. Renaming any of
+# that would mean forking their installer and breaking every existing install,
+# so instead this puts a `nexus` command in front of it: our own subcommands are
+# handled here, everything else is passed straight through.
+install_command() {
+    local target="/usr/local/bin/nexus"
+    info "installing the ${BOLD}nexus${RESET} command ..."
+    cat > "$target" <<EOF
+#!/usr/bin/env bash
+# Nexus Panel - ${REPO}
+set -euo pipefail
+
+INSTALLER="https://raw.githubusercontent.com/${REPO}/main/install.sh"
+
+case "\${1:-}" in
+    apply|update|refresh)
+        exec sudo bash -c "\$(curl -fsSL "\$INSTALLER")" @ "\$@"
+        ;;
+    ""|help|-h|--help)
+        cat <<'USAGE'
+Nexus Panel
+
+  nexus apply      pull the latest Nexus Panel image and restart
+  nexus update     take an upstream release, then re-apply Nexus Panel
+  nexus refresh    rebuild the free-config pool now
+
+  nexus logs | restart | status | cli | tui | backup | restore | uninstall
+                   passed through to the panel's own command
+
+Files: /opt/pasarguard   Settings: /opt/pasarguard/.env
+USAGE
+        ;;
+    *)
+        exec pasarguard "\$@"
+        ;;
+esac
+EOF
+    chmod +x "$target"
 }
 
 summary() {
     cat <<EOF
 
-${GREEN}${BOLD}Done.${RESET} PasarGuard is installed by its own installer and now runs this fork.
+${GREEN}${BOLD}Done.${RESET} Nexus Panel is installed and running.
 
   image     ${IMAGE}
   files     ${APP_DIR}
-  manage    ${BOLD}pasarguard${RESET} logs | restart | status | cli | backup | uninstall
+  manage    ${BOLD}nexus${RESET} logs | restart | status | cli | backup | uninstall
+  update    ${BOLD}nexus apply${RESET}
 
 ${BOLD}Free configs${RESET}
   sources   the panel's Free Configs page -> Sources -> "Add default sources"
   settings  ${ENV_FILE}  (FREE_CONFIGS_*)
   API       /api/free-configs/...   (owner only)
-  refresh   $0 refresh
+  refresh   ${BOLD}nexus refresh${RESET}
 
 ${BOLD}Note${RESET}
-  An official \`pasarguard update\` resets the image back to upstream.
-  Run ${BOLD}$0 update${RESET} instead, or ${BOLD}$0 apply${RESET} afterwards.
+  Nexus Panel is built on PasarGuard, so its installer still creates
+  ${APP_DIR} and a \`pasarguard\` command. \`nexus\` passes through to it.
+  Running \`pasarguard update\` directly puts the upstream image back -
+  use ${BOLD}nexus update${RESET} instead, or ${BOLD}nexus apply${RESET} afterwards.
 
   These are third-party servers, health-checked from this machine only. Free
   and best-effort, with no guarantees - do not sell them as a metered service.
@@ -287,10 +339,10 @@ main() {
             # Say so here rather than letting them find out at a y/n prompt
             # whose "yes" destroys a working panel.
             if [ -f "$COMPOSE_FILE" ]; then
-                warn "PasarGuard is already installed at ${APP_DIR}."
-                warn "To add this fork to it without touching your data, run:"
+                warn "a panel is already installed at ${APP_DIR}."
+                warn "To switch it to Nexus Panel without touching your data, run:"
                 warn "    $0 apply"
-                die "not running the official installer over an existing install"
+                die "not running the upstream installer over an existing install"
             fi
             run_upstream install "${passthrough[@]+"${passthrough[@]}"}"
             apply_fork
@@ -312,7 +364,7 @@ main() {
         refresh) cmd_refresh ;;
         *) die "unknown command: ${action}
 Use: install | apply | update | refresh
-Everything else is the official command: pasarguard logs | restart | status | cli | backup | uninstall" ;;
+Everything else: nexus logs | restart | status | cli | backup | uninstall" ;;
     esac
 }
 

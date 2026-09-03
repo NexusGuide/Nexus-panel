@@ -116,7 +116,7 @@ Fork-specific flags: `--image <ref>` (use a different or locally built image) an
 The installer installs the panel and nothing else: it does not add sources or build a
 pool. Sources are content, and content is managed from the panel.
 
-Day-to-day management is the official command — `pasarguard logs | restart |
+Day-to-day management is the official command — `nexus logs | restart |
 status | cli | backup | uninstall`. Only these are the wrapper's:
 
 | Command | Purpose |

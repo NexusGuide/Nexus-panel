@@ -100,8 +100,8 @@ and updates — roughly 1,750 lines of it. Reimplementing any of that would only
 add bugs. So the wrapper runs the official installer and then changes the two
 things that make this a fork:
 
-1. points `/opt/pasarguard/docker-compose.yml` at this fork's image
-2. adds the `FREE_CONFIGS_*` settings to `/opt/pasarguard/.env`
+1. points `/opt/nexus/docker-compose.yml` at this fork's image
+2. adds the `FREE_CONFIGS_*` settings to `/opt/nexus/.env`
 
 Every flag goes straight through to the official installer, so anything
 documented there works:
@@ -126,7 +126,7 @@ status | cli | backup | uninstall`. Only these are the wrapper's:
 | `update` | official update, then re-apply the fork |
 | `refresh` | rebuild the free-configs pool now |
 
-> **An official `pasarguard update` resets the image back to upstream**, since
+> **Running `pasarguard update` on a migrated install resets the image back to upstream**, since
 > the version is hardcoded there. Use `install.sh update`, or run
 > `install.sh apply` afterwards.
 

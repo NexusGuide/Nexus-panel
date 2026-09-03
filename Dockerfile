@@ -61,14 +61,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Two names for each entry point on purpose: upstream's `pasarguard` command
-# execs the pasarguard-* ones by name, so removing them would break `nexus cli`,
-# while the nexus-* ones are what someone gets a shell in the container expects.
-COPY cli_wrapper.sh /usr/bin/pasarguard-cli
-RUN chmod +x /usr/bin/pasarguard-cli && ln -s /usr/bin/pasarguard-cli /usr/bin/nexus-cli
+COPY cli_wrapper.sh /usr/bin/nexus-cli
+RUN chmod +x /usr/bin/nexus-cli
 
-COPY tui_wrapper.sh /usr/bin/pasarguard-tui
-RUN chmod +x /usr/bin/pasarguard-tui && ln -s /usr/bin/pasarguard-tui /usr/bin/nexus-tui
+COPY tui_wrapper.sh /usr/bin/nexus-tui
+RUN chmod +x /usr/bin/nexus-tui
 
 # Copy healthcheck script
 COPY healthcheck.sh /code/healthcheck.sh

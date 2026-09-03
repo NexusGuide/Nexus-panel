@@ -1,3 +1,2 @@
 #!/bin/bash
-
-echo "TUI has been removed; use Pasarguard CLI instead."
+echo "The TUI has been removed; use \`nexus cli\` instead."

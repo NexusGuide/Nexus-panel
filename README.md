@@ -46,78 +46,72 @@ Full documentation: **[FREE_CONFIGS.md](FREE_CONFIGS.md)**
 
 ## Installation
 
-One command, same as upstream. Pick the database you want:
-
-**TimescaleDB (recommended):**
-
-```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-panel/main/install.sh)" @ install --database timescaledb
-```
-
-**SQLite:**
-
 ```bash
 sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-panel/main/install.sh)" @ install
 ```
 
-**MySQL:**
+That gives you SQLite and a panel on localhost. The options worth knowing:
 
-```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-panel/main/install.sh)" @ install --database mysql
-```
-
-**MariaDB:**
-
-```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-panel/main/install.sh)" @ install --database mariadb
-```
-
-**PostgreSQL:**
-
-```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-panel/main/install.sh)" @ install --database postgresql
-```
-
-The installer is a thin wrapper around PasarGuard's official one: it runs that
-installer unchanged, then points the compose file at this fork's image and writes the
-free-config settings into `.env`. Every flag the official installer accepts works here
-too, including `--ssl-domain panel.example.com`.
-
-It installs the panel and nothing more: no source lists, no config pool. Those are
-content, and content is managed from the panel — Free Configs → Sources →
-**Add default sources**.
-
-### Fork-specific options
-
-| Option | What it does |
+| Option | |
 | --- | --- |
-| `--image <ref>` | Use a different image, e.g. a local build: `--image nexus-panel:dev` |
-| `--no-enable` | Install the image but leave the free-config feature switched off |
+| `--database sqlite\|mysql\|mariadb\|postgresql\|timescaledb` | Backend to install. Default `sqlite` |
+| `--ssl-domain panel.example.com` | Issue a Let's Encrypt certificate and listen publicly |
+| `--cert FILE --key FILE` | Use a certificate you already have |
+| `--port 8000` | Port for the dashboard and API |
+| `--image REF` | Use a different image, e.g. a local build: `--image nexus-panel:dev` |
+| `--no-enable` | Install with the free-config feature switched off |
+| `--yes` | Answer every prompt with yes |
+
+A typical real install:
+
+```bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-panel/main/install.sh)" @ install \
+  --database timescaledb --ssl-domain panel.example.com
+```
+
+Without a certificate the panel binds to `127.0.0.1` on purpose — a dashboard and
+subscription links served over plain HTTP to the open internet is not something you
+should get by accident. Reach it over SSH while you try it out:
+
+```bash
+ssh -L 8000:localhost:8000 root@your-server
+```
+
+...or add a certificate later with `nexus ssl --domain panel.example.com`.
+
+### Coming from PasarGuard
+
+```bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-panel/main/install.sh)" @ migrate
+```
+
+This stops the old panel, copies `/var/lib/pasarguard` to `/var/lib/nexus`, carries the
+settings over and starts Nexus Panel. The old install is left in place, untouched, so
+you can go back to it if something is wrong.
 
 ## Managing it
 
-The installer puts a `nexus` command on the server:
+The installer leaves a `nexus` command behind:
 
-| Command | What it does |
+| Command | |
 | --- | --- |
-| `nexus apply` | Pull the latest Nexus Panel image and restart |
-| `nexus update` | Take an upstream release, then re-apply Nexus Panel |
+| `nexus apply` | Pull the current image and restart — this is how you update |
+| `nexus ssl --domain D` | Issue or replace the certificate |
 | `nexus refresh` | Rebuild the free-config pool now |
-| `nexus logs` / `restart` / `status` / `cli` / `backup` / `uninstall` | Passed through to the panel's own command |
-
-Nexus Panel is built on PasarGuard, so its installer still creates `/opt/pasarguard`
-and a `pasarguard` command — renaming those would mean forking ~1750 lines of installer
-and breaking every existing install's paths, backups and systemd unit. `nexus` is a
-front for it. One consequence worth knowing: running `pasarguard update` directly puts
-the upstream image back, so use `nexus update` instead.
+| `nexus logs` `status` `restart` `start` `stop` | Day-to-day |
+| `nexus cli ...` | The panel's own CLI, e.g. `nexus cli generate-temp-key` |
+| `nexus backup` / `nexus restore FILE` | Archive of the data directory, settings and a database dump |
+| `nexus edit` / `nexus edit-env` | Open the compose file or `.env` in `$EDITOR` |
+| `nexus uninstall` | Remove it, with a separate prompt before deleting your data |
 
 ## After installation
 
 | | |
 | --- | --- |
-| Files | `/opt/pasarguard` |
-| Config | `/opt/pasarguard/.env` |
-| Data | `/var/lib/pasarguard` |
+| Files | `/opt/nexus` |
+| Config | `/opt/nexus/.env` |
+| Data | `/var/lib/nexus` |
+| Certificates | `/var/lib/nexus/certs` |
 | Dashboard | `https://YOUR_DOMAIN:8000/dashboard/` |
 
 Create the owner account:
@@ -127,17 +121,6 @@ nexus cli generate-temp-key
 ```
 
 Enter the key it prints on the dashboard login page.
-
-The dashboard needs a TLS certificate — see upstream's
-[certificate guide](https://docs.pasarguard.org/en/examples/issue-ssl-certificate).
-To try it without a domain, forward the port over SSH:
-
-```bash
-ssh -L 8000:localhost:8000 user@serverip
-```
-
-then open `http://localhost:8000/dashboard/`. This is for testing only; access ends
-when the SSH session closes.
 
 ## Running from source
 
@@ -164,9 +147,13 @@ What this fork adds is documented in [FREE_CONFIGS.md](FREE_CONFIGS.md).
 ## Credits
 
 Nexus Panel exists because of [PasarGuard](https://github.com/PasarGuard/panel) — the
-panel, the dashboard, the installer and the node protocol are all their work, and this
-fork tracks their releases. If the base panel is useful to you, consider
+panel, the dashboard and the node protocol are their work, and this fork tracks their
+releases. If the base panel is useful to you, consider
 [supporting them](https://donate.pasarguard.org).
+
+The installer here is not theirs: `install.sh` is written from scratch for this project,
+because PasarGuard's installer scripts are published without a licence and so cannot be
+copied or redistributed.
 
 The default community source lists are public collections maintained by their own
 authors, credited in [FREE_CONFIGS.md](FREE_CONFIGS.md).

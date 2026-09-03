@@ -17,6 +17,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     uv sync --frozen --no-install-project --no-dev
 ADD . /build
+# Compile every module before anything else. This has caught a whole tree of
+# `except A, B:` handlers - Python 2 syntax that no longer parses - twice now,
+# once in the sources this fork started from and once from a formatter that
+# rewrote them. Both times the failure would otherwise have surfaced as a
+# crash-looping container after the image was already published.
+RUN python -m compileall -q app cli scripts config.py main.py
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 

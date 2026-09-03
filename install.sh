@@ -2,7 +2,7 @@
 #
 # Installer for nexus-panel.
 #
-#   sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/nexus-panel/main/install.sh)" @ install
+#   sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-panel/main/install.sh)" @ install
 #
 # This is deliberately a thin wrapper around PasarGuard's own installer rather
 # than a second installer. Theirs is ~1750 lines and already handles five
@@ -37,7 +37,7 @@
 #
 set -euo pipefail
 
-REPO="NexusGuide/nexus-panel"
+REPO="NexusGuide/Nexus-panel"
 IMAGE="ghcr.io/nexusguide/nexus-panel:latest"
 UPSTREAM_INSTALLER="https://github.com/PasarGuard/scripts/raw/main/pasarguard.sh"
 

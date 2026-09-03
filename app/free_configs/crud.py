@@ -150,9 +150,7 @@ async def replace_configs(db: AsyncSession, results: list[HealthResult], source_
             "port": result.config.port,
             "is_healthy": result.is_healthy,
             # the admin's switch, re-applied to the freshly harvested pool
-            "is_enabled": overrides[result.config.uri_hash].is_enabled
-            if result.config.uri_hash in overrides
-            else True,
+            "is_enabled": overrides[result.config.uri_hash].is_enabled if result.config.uri_hash in overrides else True,
             "is_manual": result.config.uri_hash in manual_hashes,
             "latency_ms": result.latency_ms,
             "last_checked_at": now,
@@ -231,12 +229,16 @@ async def get_configs_page(
         stmt = stmt.where(condition)
         count_stmt = count_stmt.where(condition)
 
-    stmt = stmt.order_by(
-        FreeConfig.is_manual.desc(),
-        FreeConfig.latency_ms.is_(None),
-        FreeConfig.latency_ms.asc(),
-        FreeConfig.id.asc(),
-    ).offset(max(0, offset)).limit(max(1, min(limit, 500)))
+    stmt = (
+        stmt.order_by(
+            FreeConfig.is_manual.desc(),
+            FreeConfig.latency_ms.is_(None),
+            FreeConfig.latency_ms.asc(),
+            FreeConfig.id.asc(),
+        )
+        .offset(max(0, offset))
+        .limit(max(1, min(limit, 500)))
+    )
 
     rows = [(config, override) for config, override in (await db.execute(stmt)).all()]
     total = (await db.execute(count_stmt)).scalar_one()
@@ -300,12 +302,16 @@ async def set_overrides_bulk(db: AsyncSession, uri_hashes: list[str], is_enabled
     existing = {}
     for start in range(0, len(wanted), IN_CHUNK_SIZE):
         rows = (
-            await db.execute(
-                select(FreeConfigOverride).where(
-                    FreeConfigOverride.uri_hash.in_(wanted[start : start + IN_CHUNK_SIZE])
+            (
+                await db.execute(
+                    select(FreeConfigOverride).where(
+                        FreeConfigOverride.uri_hash.in_(wanted[start : start + IN_CHUNK_SIZE])
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         existing.update({row.uri_hash: row for row in rows})
     for uri_hash in wanted:
         if uri_hash in existing:
@@ -402,10 +408,7 @@ async def upsert_manual_config(db: AsyncSession, config, remark: str | None = No
     """
     await set_override(db, config.uri_hash, uri=config.uri, remark=remark, is_enabled=True)
 
-    now = dt.now(UTC)
-    existing = (
-        await db.execute(select(FreeConfig).where(FreeConfig.uri_hash == config.uri_hash))
-    ).scalar_one_or_none()
+    existing = (await db.execute(select(FreeConfig).where(FreeConfig.uri_hash == config.uri_hash))).scalar_one_or_none()
     if existing is not None:
         existing.is_manual = True
         existing.is_enabled = True
@@ -527,7 +530,9 @@ async def remove_group_assignments(db: AsyncSession, group_id: int, uri_hashes: 
     return removed
 
 
-async def get_configs_for_groups(db: AsyncSession, group_ids: list[int], limit: int = 0) -> list[tuple[str, str | None]]:
+async def get_configs_for_groups(
+    db: AsyncSession, group_ids: list[int], limit: int = 0
+) -> list[tuple[str, str | None]]:
     """The configs these groups are entitled to, fastest first.
 
     A group with no assignments is entitled to the whole pool - that is what an
@@ -537,7 +542,9 @@ async def get_configs_for_groups(db: AsyncSession, group_ids: list[int], limit: 
     if not group_ids:
         return []
 
-    assigned_stmt = select(FreeConfigGroupConfig.group_id).where(FreeConfigGroupConfig.group_id.in_(group_ids)).distinct()
+    assigned_stmt = (
+        select(FreeConfigGroupConfig.group_id).where(FreeConfigGroupConfig.group_id.in_(group_ids)).distinct()
+    )
     groups_with_assignments = set((await db.execute(assigned_stmt)).scalars().all())
     if set(group_ids) - groups_with_assignments:
         # at least one of the user's groups is "everything"

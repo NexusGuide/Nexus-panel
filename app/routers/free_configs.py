@@ -95,9 +95,7 @@ async def create_source(
     """Add a source. The URL must be unique."""
     if await crud.get_source_by_url(db, new_source.url):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This source URL already exists")
-    return await crud.create_source(
-        db, url=new_source.url, remark=new_source.remark, is_base64=new_source.is_base64
-    )
+    return await crud.create_source(db, url=new_source.url, remark=new_source.remark, is_base64=new_source.is_base64)
 
 
 @router.put("/sources/{source_id}", response_model=FreeConfigSourceResponse, responses={404: responses._404})
@@ -121,9 +119,7 @@ async def modify_source(
 
 
 @router.delete("/sources/{source_id}", status_code=status.HTTP_204_NO_CONTENT, responses={404: responses._404})
-async def remove_source(
-    source_id: int, db: AsyncSession = Depends(get_db), _: AdminDetails = Depends(require_owner)
-):
+async def remove_source(source_id: int, db: AsyncSession = Depends(get_db), _: AdminDetails = Depends(require_owner)):
     """Delete a source. Configs already harvested from it are kept until the next refresh."""
     source = await crud.get_source(db, source_id)
     if source is None:
@@ -211,9 +207,7 @@ async def update_config(
     Stored against the config's content hash rather than its row id, so the
     decision survives the next refresh - which replaces the pool wholesale.
     """
-    await crud.set_override(
-        db, uri_hash, is_enabled=payload.is_enabled, remark=payload.remark, note=payload.note
-    )
+    await crud.set_override(db, uri_hash, is_enabled=payload.is_enabled, remark=payload.remark, note=payload.note)
     await service.invalidate_pool_cache()
 
     override = await crud.get_override(db, uri_hash)
@@ -400,9 +394,7 @@ async def list_group_summaries(db: AsyncSession = Depends(get_db), _: AdminDetai
 
 
 @router.get("/groups/{group_id}/state", response_model=GroupFreeConfigState)
-async def get_group_state(
-    group_id: int, db: AsyncSession = Depends(get_db), _: AdminDetails = Depends(require_owner)
-):
+async def get_group_state(group_id: int, db: AsyncSession = Depends(get_db), _: AdminDetails = Depends(require_owner)):
     """One group's free-config settings, for the panel's own group dialog."""
     enabled = group_id in set(await crud.get_enabled_group_ids(db))
     hashes = await crud.get_group_assignments(db, group_id)
@@ -427,7 +419,9 @@ async def set_group_access_one(
     await service.invalidate_pool_cache()
     hashes = await crud.get_group_assignments(db, group_id)
     return GroupFreeConfigState(
-        group_id=group_id, enabled=payload.enabled, uri_hashes=hashes,
+        group_id=group_id,
+        enabled=payload.enabled,
+        uri_hashes=hashes,
         gets_whole_pool=payload.enabled and not hashes,
     )
 

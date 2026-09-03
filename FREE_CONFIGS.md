@@ -90,7 +90,7 @@ sources (DB)  ──fetch──▶  parse & dedupe  ──TCP health check──
 On a fresh VPS:
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/nexus-panel/main/install.sh)" @ install
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/NexusGuide/Nexus-panel/main/install.sh)" @ install
 ```
 
 This is a thin wrapper around **PasarGuard's own installer**, not a second one.
@@ -133,7 +133,7 @@ status | cli | backup | uninstall`. Only these are the wrapper's:
 > Package settings → Change visibility), or the pull fails for everyone else.
 > Until then, build it yourself and pass `--image`:
 > ```bash
-> git clone https://github.com/NexusGuide/nexus-panel.git
+> git clone https://github.com/NexusGuide/Nexus-panel.git
 > cd nexus-panel
 > docker build --network=host -t nexus-panel:dev .
 > sudo bash install.sh install --image nexus-panel:dev

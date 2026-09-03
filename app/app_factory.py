@@ -16,7 +16,7 @@ from app.nats.router import router
 from app.settings import handle_settings_message
 from app.subscription.client_templates import handle_client_template_message
 from app.utils.logger import get_logger
-from app.version import __version__
+from app.version import UPSTREAM_VERSION, __version__
 from config import runtime_settings, subscription_env_settings
 
 logger = get_logger("app-factory")
@@ -390,7 +390,11 @@ def create_app() -> FastAPI:
 
     _use_route_names_as_operation_ids(app)
 
-    on_startup(lambda: logger.info(f"PasarGuard v{__version__} ({runtime_settings.role.value})"))
+    on_startup(
+        lambda: logger.info(
+            f"Nexus Panel v{__version__} (PasarGuard {UPSTREAM_VERSION}) ({runtime_settings.role.value})"
+        )
+    )
 
     @app.exception_handler(RequestValidationError)
     def validation_exception_handler(request: Request, exc: RequestValidationError):

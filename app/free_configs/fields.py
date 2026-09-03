@@ -125,6 +125,118 @@ SUGGESTED = {
 _VMESS_STRUCTURAL = {"add", "port", "ps", "v"}
 
 
+# --------------------------------------------------------------------------- #
+# what a profile may set, per protocol
+# --------------------------------------------------------------------------- #
+#
+# A profile stamps the same values onto many configs at once, so it deliberately
+# offers less than the per-config editor:
+#
+#   * no credentials. Writing one UUID or password across a hundred configs
+#     would break all hundred, and there is no version of that which is useful.
+#   * only keys the chosen protocol actually understands. This is not tidiness -
+#     vmess and the URI protocols disagree about names. In a vmess body the
+#     transport is "net" and "type" means the header type, while a vless URI
+#     spells the transport "type" and the header type "headerType". A single
+#     shared field list would write "type=ws" into a vmess config and quietly
+#     turn its header type into nonsense.
+
+PROFILE_FIELDS = {
+    "vless": [
+        "address",
+        "port",
+        "type",
+        "headerType",
+        "host",
+        "path",
+        "serviceName",
+        "mode",
+        "security",
+        "sni",
+        "fp",
+        "alpn",
+        "flow",
+        "encryption",
+        "pbk",
+        "sid",
+        "spx",
+        "allowInsecure",
+    ],
+    "vmess": [
+        "address",
+        "port",
+        "net",
+        "type",
+        "host",
+        "path",
+        "tls",
+        "sni",
+        "fp",
+        "alpn",
+        "aid",
+        "scy",
+    ],
+    "trojan": [
+        "address",
+        "port",
+        "type",
+        "headerType",
+        "host",
+        "path",
+        "serviceName",
+        "mode",
+        "security",
+        "sni",
+        "fp",
+        "alpn",
+        "allowInsecure",
+    ],
+    "shadowsocks": ["address", "port", "method", "plugin"],
+    "hysteria2": ["address", "port", "sni", "alpn", "obfs", "obfs-password", "insecure"],
+    "tuic": ["address", "port", "sni", "alpn", "congestion_control", "udp_relay_mode", "allowInsecure"],
+}
+
+# Where a protocol spells a shared idea differently, say so in the label rather
+# than leaving the admin to guess which "type" they are looking at.
+_PROFILE_LABELS = {
+    "vmess": {
+        "net": "Transport (network)",
+        "type": "Header type",
+        "tls": "TLS",
+    },
+}
+
+_PROFILE_OPTIONS = {
+    "vmess": {
+        "net": OPTIONS["type"],
+        "type": OPTIONS["headerType"],
+        "tls": ["", "none", "tls"],
+    },
+}
+
+_STRUCTURAL_LABELS = {"address": "Address (server or CDN IP)", "port": "Port"}
+
+
+def profile_protocols() -> list[str]:
+    """The protocols a profile can be written for."""
+    return list(PROFILE_FIELDS)
+
+
+def profile_fields(protocol: str) -> list[dict]:
+    """The fields a profile for ``protocol`` may set, in the order to show them."""
+    protocol = (protocol or "").strip().lower()
+    labels = _PROFILE_LABELS.get(protocol, {})
+    options = _PROFILE_OPTIONS.get(protocol, {})
+    return [
+        {
+            "key": key,
+            "label": labels.get(key) or _STRUCTURAL_LABELS.get(key) or LABELS.get(key, key),
+            "options": options.get(key) or OPTIONS.get(key),
+        }
+        for key in PROFILE_FIELDS.get(protocol, [])
+    ]
+
+
 class ConfigFieldsError(ValueError):
     """The URI could not be taken apart, or the edit could not be written back."""
 

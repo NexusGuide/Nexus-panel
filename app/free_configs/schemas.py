@@ -4,7 +4,10 @@ from datetime import datetime as dt
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.free_configs.fields import profile_protocols
 from app.free_configs.parser import SUPPORTED_SCHEMES
+
+PROFILE_PROTOCOLS = tuple(profile_protocols())
 
 
 class FreeConfigSourceCreate(BaseModel):
@@ -283,13 +286,25 @@ class CandidateSelection(BaseModel):
 class ProfileResponse(BaseModel):
     id: int
     name: str
+    # which protocol the profile is written for; "" for a profile made before
+    # profiles had one, which the panel asks the owner to set before applying
+    protocol: str = ""
     remark: str = ""
     fields: dict = Field(default_factory=dict)
 
 
 class ProfileCreate(BaseModel):
     name: str = Field(min_length=1, max_length=128)
+    protocol: str = Field(min_length=1, max_length=32)
     remark: str = Field(default="", max_length=256)
+
+    @field_validator("protocol", mode="after")
+    @classmethod
+    def validate_protocol(cls, value: str) -> str:
+        value = value.strip().lower()
+        if value not in PROFILE_PROTOCOLS:
+            raise ValueError(f"protocol must be one of: {', '.join(PROFILE_PROTOCOLS)}")
+        return value
     # {field: value} in the config editor's vocabulary; an empty value means
     # "leave whatever the config already had"
     fields: dict = Field(default_factory=dict)
@@ -297,8 +312,35 @@ class ProfileCreate(BaseModel):
 
 class ProfileUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=128)
+    protocol: str | None = Field(default=None, min_length=1, max_length=32)
     remark: str | None = Field(default=None, max_length=256)
     fields: dict | None = None
+
+    @field_validator("protocol", mode="after")
+    @classmethod
+    def validate_protocol(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip().lower()
+        if value not in PROFILE_PROTOCOLS:
+            raise ValueError(f"protocol must be one of: {', '.join(PROFILE_PROTOCOLS)}")
+        return value
+
+
+class ProfileFieldOption(BaseModel):
+    key: str
+    label: str
+    options: list[str] | None = None
+
+
+class ProfileFieldsResponse(BaseModel):
+    """Which fields a profile may set, per protocol.
+
+    The panel asks for this rather than carrying its own copy, so the two can
+    never drift into disagreeing about what "type" means for vmess.
+    """
+
+    protocols: dict[str, list[ProfileFieldOption]] = Field(default_factory=dict)
 
 
 class ApplyProfileRequest(BaseModel):

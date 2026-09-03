@@ -329,8 +329,12 @@ async def get_profile_by_name(db: AsyncSession, name: str) -> FreeConfigProfile 
     return (await db.execute(select(FreeConfigProfile).where(FreeConfigProfile.name == name))).scalar_one_or_none()
 
 
-async def create_profile(db: AsyncSession, name: str, fields: dict, remark: str = "") -> FreeConfigProfile:
-    profile = FreeConfigProfile(name=name, fields=json.dumps(fields, ensure_ascii=False), remark=remark)
+async def create_profile(
+    db: AsyncSession, name: str, protocol: str, fields: dict, remark: str = ""
+) -> FreeConfigProfile:
+    profile = FreeConfigProfile(
+        name=name, protocol=protocol, fields=json.dumps(fields, ensure_ascii=False), remark=remark
+    )
     db.add(profile)
     await db.commit()
     await db.refresh(profile)
@@ -341,11 +345,14 @@ async def update_profile(
     db: AsyncSession,
     profile: FreeConfigProfile,
     name: str | None = None,
+    protocol: str | None = None,
     fields: dict | None = None,
     remark: str | None = None,
 ) -> FreeConfigProfile:
     if name is not None:
         profile.name = name
+    if protocol is not None:
+        profile.protocol = protocol
     if fields is not None:
         profile.fields = json.dumps(fields, ensure_ascii=False)
     if remark is not None:

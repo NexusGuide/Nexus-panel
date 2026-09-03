@@ -118,6 +118,10 @@ class FreeConfigProfile(Base, IdMixin):
     __tablename__ = "free_config_profiles"
 
     name: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
+    # Which protocol this profile is written for. Protocols disagree about field
+    # names - vmess calls the transport "net", vless calls it "type" - so a
+    # profile belongs to one of them and is only ever applied to its own kind.
+    protocol: Mapped[str] = mapped_column(String(32), default="", nullable=False)
     # {field: value} in the same vocabulary the config editor uses, so a profile
     # can set anything the editor can - and nothing it cannot
     fields: Mapped[str] = mapped_column(Text, default="{}", nullable=False)

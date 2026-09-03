@@ -16,7 +16,13 @@ from fastapi.responses import HTMLResponse
 from app.db import AsyncSession, get_db
 from app.free_configs import crud, service, settings as settings_module
 from app.free_configs.defaults import DEFAULT_SOURCES
-from app.free_configs.fields import ConfigFieldsError, as_form, build as build_uri
+from app.free_configs.fields import (
+    ConfigFieldsError,
+    as_form,
+    build as build_uri,
+    profile_fields,
+    profile_protocols,
+)
 from app.free_configs.parser import parse_uri
 from app.free_configs.schemas import (
     ApplyProfileRequest,
@@ -49,6 +55,7 @@ from app.free_configs.schemas import (
     GroupAssignmentUpdate,
     GroupSummary,
 )
+from app.free_configs.schemas import ProfileFieldsResponse
 from app.models.admin import AdminDetails
 from app.utils import responses
 from config import free_configs_settings as env_settings
@@ -569,7 +576,24 @@ def _profile_response(profile) -> ProfileResponse:
         fields = json.loads(profile.fields) if profile.fields else {}
     except json.JSONDecodeError:
         fields = {}
-    return ProfileResponse(id=profile.id, name=profile.name, remark=profile.remark, fields=fields)
+    return ProfileResponse(
+        id=profile.id,
+        name=profile.name,
+        protocol=getattr(profile, "protocol", "") or "",
+        remark=profile.remark,
+        fields=fields,
+    )
+
+
+@router.get("/profiles/fields", response_model=ProfileFieldsResponse)
+async def list_profile_fields(_: AdminDetails = Depends(require_owner)):
+    """Which fields a profile may set, per protocol.
+
+    Served rather than hardcoded in the page so the two cannot drift: vmess and
+    the URI protocols use different names for the same idea, and a stale copy in
+    the browser would write the wrong key into a config.
+    """
+    return ProfileFieldsResponse(protocols={name: profile_fields(name) for name in profile_protocols()})
 
 
 @router.get("/profiles", response_model=list[ProfileResponse])
@@ -585,7 +609,9 @@ async def create_profile(
 ):
     if await crud.get_profile_by_name(db, payload.name):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A profile with that name already exists")
-    profile = await crud.create_profile(db, name=payload.name, fields=payload.fields, remark=payload.remark)
+    profile = await crud.create_profile(
+        db, name=payload.name, protocol=payload.protocol, fields=payload.fields, remark=payload.remark
+    )
     return _profile_response(profile)
 
 
@@ -601,7 +627,14 @@ async def modify_profile(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
     if payload.name and payload.name != profile.name and await crud.get_profile_by_name(db, payload.name):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A profile with that name already exists")
-    profile = await crud.update_profile(db, profile, name=payload.name, fields=payload.fields, remark=payload.remark)
+    profile = await crud.update_profile(
+        db,
+        profile,
+        name=payload.name,
+        protocol=payload.protocol,
+        fields=payload.fields,
+        remark=payload.remark,
+    )
     return _profile_response(profile)
 
 
@@ -634,20 +667,46 @@ async def apply_profile(
     A config the editor cannot take apart is skipped and counted rather than
     failing the whole request: community lists contain malformed entries, and
     one of them should not stop the other nine hundred from being updated.
+
+    Configs of a different protocol than the profile are skipped for a stronger
+    reason: protocols do not share a field vocabulary. Writing a vless profile's
+    "type=ws" into a vmess config would set that config's header type to "ws"
+    and leave its transport alone - a config that still parses and no longer
+    connects. Selecting a mixed set is therefore not an error; the ones the
+    profile is not for are counted and left exactly as they were.
     """
     profile = await crud.get_profile(db, payload.profile_id)
     if profile is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
+    protocol = (getattr(profile, "protocol", "") or "").strip().lower()
+    if not protocol:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This profile has no protocol set. Open it and choose one before applying it.",
+        )
     try:
         fields = json.loads(profile.fields) if profile.fields else {}
     except json.JSONDecodeError:
         fields = {}
     if not fields:
-        return {"applied": 0, "skipped": 0, "detail": "This profile has no values set"}
+        return {"applied": 0, "skipped": 0, "wrong_protocol": 0, "detail": "This profile has no values set"}
+
+    allowed = {field["key"] for field in profile_fields(protocol)}
+    fields = {key: value for key, value in fields.items() if key in allowed}
+    if not fields:
+        return {
+            "applied": 0,
+            "skipped": 0,
+            "wrong_protocol": 0,
+            "detail": "This profile sets nothing that a %s config understands" % protocol,
+        }
 
     configs = await crud.get_configs_by_hashes(db, payload.uri_hashes)
-    applied = skipped = 0
+    applied = skipped = wrong_protocol = 0
     for config in configs:
+        if (config.protocol or "").strip().lower() != protocol:
+            wrong_protocol += 1
+            continue
         try:
             form = as_form(config.uri)
         except ConfigFieldsError:
@@ -690,4 +749,4 @@ async def apply_profile(
         applied += 1
 
     await service.invalidate_pool_cache()
-    return {"applied": applied, "skipped": skipped}
+    return {"applied": applied, "skipped": skipped, "wrong_protocol": wrong_protocol}

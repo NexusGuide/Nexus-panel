@@ -230,19 +230,25 @@
 </section>
 
 <section id="tab-profiles" hidden>
-  <p class="hint" style="margin-bottom:10px">
+  <p class="hint" style="margin-bottom:10px" data-i18n="prof.lead">
     A profile is a set of values stamped onto configs you choose - an address to front them with,
     a working SNI, a fingerprint. Leave a field empty and that field is left exactly as the config
     already had it.
   </p>
+  <p class="hint" style="margin-bottom:10px" data-i18n="prof.protoLead">
+    A profile is written for one protocol. They do not share a vocabulary - in a vmess config the
+    transport is called "net" and "type" means the header type - so a profile is only ever applied
+    to configs of its own protocol; the rest of your selection is left alone.
+  </p>
   <div class="row" style="margin-bottom:10px">
     <input id="profName" placeholder="Profile name" data-i18n-ph="prof.namePlaceholder" style="width:200px">
+    <select id="profProto" style="min-width:130px"></select>
     <input class="grow" id="profNote" placeholder="What is it for? (optional)" data-i18n-ph="prof.notePlaceholder">
     <button id="profNew" class="primary" data-i18n="prof.new">New profile</button>
   </div>
   <div class="wrap">
     <table>
-      <thead><tr><th data-i18n="col.name">Name</th><th data-i18n="col.note">Note</th><th data-i18n="col.sets">Sets</th><th></th></tr></thead>
+      <thead><tr><th data-i18n="col.name">Name</th><th data-i18n="col.protocol">Protocol</th><th data-i18n="col.note">Note</th><th data-i18n="col.sets">Sets</th><th></th></tr></thead>
       <tbody id="profRows"></tbody>
     </table>
   </div>
@@ -415,6 +421,19 @@
       'prof.needName': 'Give the profile a name',
       'prof.pickFirst': 'Pick a profile first',
       'prof.pickConfigs': 'Select the configs to apply it to',
+      'prof.pickProtocol': 'Protocol...',
+      'prof.needProtocol': 'Choose which protocol this profile is for',
+      'prof.noProtocol': 'not set',
+      'prof.created': 'Created - now set the fields below',
+      'prof.editing': 'Editing "{name}"',
+      'prof.chooseProtocolFirst': 'This profile has no protocol. Delete it and make a new one for the protocol you want.',
+      'prof.confirmDelete': 'Delete this profile? Configs it was applied to are not changed back.',
+      'prof.confirmApply': 'Apply this profile to the {count} selected config(s)? Only the {protocol} ones are rewritten.',
+      'prof.applied': '{n} updated',
+      'prof.wrongProtocol': '{n} left alone (other protocol)',
+      'prof.skipped': '{n} skipped',
+      'action.edit': 'Edit',
+      'action.delete': 'Delete',
       'stat.inPool': 'In pool', 'stat.reachable': 'Reachable', 'stat.off': 'Switched off',
       'stat.manual': 'Added by hand', 'stat.waiting': 'Waiting to choose', 'stat.perSub': 'Per subscription',
       'toast.saved': 'Saved', 'toast.deleted': 'Deleted', 'toast.nothingSelected': 'Nothing selected',
@@ -459,6 +478,31 @@
       'prof.new': 'پروفایل جدید', 'prof.save': 'ذخیره‌ی پروفایل', 'prof.empty': 'هنوز پروفایلی نیست.',
       'prof.keepEmpty': 'خالی بگذار تا دست نخورد', 'prof.needName': 'برای پروفایل یک نام بگذار',
       'prof.pickFirst': 'اول یک پروفایل انتخاب کن', 'prof.pickConfigs': 'کانفیگ‌هایی که می‌خواهی رویشان اعمال شود را انتخاب کن',
+      'prof.protoLead': 'هر پروفایل برای یک پروتکل نوشته می‌شود. پروتکل‌ها واژگان مشترک ندارند — در vmess نام ترنسپورت «net» است و «type» یعنی نوع هدر — پس پروفایل فقط روی کانفیگ‌های پروتکل خودش اعمال می‌شود و بقیه‌ی انتخاب دست‌نخورده می‌ماند.',
+      'col.protocol': 'پروتکل',
+      'prof.pickProtocol': 'پروتکل...',
+      'prof.needProtocol': 'انتخاب کن این پروفایل برای کدام پروتکل است',
+      'prof.noProtocol': 'تعیین‌نشده',
+      'prof.created': 'ساخته شد — حالا فیلدهای پایین را تنظیم کن',
+      'prof.editing': 'ویرایش «{name}»',
+      'prof.chooseProtocolFirst': 'این پروفایل پروتکل ندارد. پاکش کن و یکی برای پروتکل موردنظرت بساز.',
+      'prof.confirmDelete': 'این پروفایل پاک شود؟ کانفیگ‌هایی که رویشان اعمال شده به حالت قبل برنمی‌گردند.',
+      'prof.confirmApply': 'این پروفایل روی {count} کانفیگ انتخاب‌شده اعمال شود؟ فقط آن‌هایی که {protocol} هستند بازنویسی می‌شوند.',
+      'prof.applied': '{n} تغییر کرد',
+      'prof.wrongProtocol': '{n} دست‌نخورده ماند (پروتکل دیگر)',
+      'prof.skipped': '{n} رد شد',
+      'action.edit': 'ویرایش', 'action.delete': 'حذف',
+      'field.address': 'آدرس (سرور یا آی‌پی CDN)', 'field.port': 'پورت', 'field.sni': 'SNI',
+      'field.host': 'هدر Host', 'field.path': 'مسیر (path)', 'field.type': 'ترنسپورت (شبکه)',
+      'field.net': 'ترنسپورت (شبکه)', 'field.headerType': 'نوع هدر', 'field.tls': 'TLS',
+      'field.security': 'TLS', 'field.fp': 'اثر انگشت (fingerprint)', 'field.alpn': 'ALPN',
+      'field.flow': 'Flow', 'field.encryption': 'رمزنگاری', 'field.serviceName': 'نام سرویس gRPC',
+      'field.mode': 'حالت gRPC', 'field.pbk': 'کلید عمومی Reality', 'field.sid': 'شناسه کوتاه Reality',
+      'field.spx': 'spiderX در Reality', 'field.allowInsecure': 'اجازه‌ی اتصال ناامن',
+      'field.insecure': 'اجازه‌ی اتصال ناامن', 'field.method': 'روش رمزنگاری', 'field.plugin': 'پلاگین',
+      'field.obfs': 'مبهم‌سازی (obfs)', 'field.obfs-password': 'رمز مبهم‌سازی',
+      'field.congestion_control': 'کنترل ازدحام', 'field.udp_relay_mode': 'حالت رله‌ی UDP',
+      'field.aid': 'AlterId', 'field.scy': 'رمزنگاری (scy)',
       'settings.save': 'ذخیره‌ی تنظیمات', 'settings.reset': 'بازگرداندن همه به مقادیر ‎.env',
       'editor.title': 'ویرایش کانفیگ', 'editor.alias': 'نام نمایشی (remarks)',
       'editor.addParam': 'افزودن پارامتر', 'editor.result': 'URI حاصل',
@@ -507,6 +551,31 @@
       'prof.new': 'Новый профиль', 'prof.save': 'Сохранить профиль', 'prof.empty': 'Профилей пока нет.',
       'prof.keepEmpty': 'пусто — оставить как есть', 'prof.needName': 'Дайте профилю название',
       'prof.pickFirst': 'Сначала выберите профиль', 'prof.pickConfigs': 'Выберите конфиги, к которым его применить',
+      'prof.protoLead': 'Профиль пишется под один протокол. У протоколов разные имена полей — в vmess транспорт называется "net", а "type" означает тип заголовка — поэтому профиль применяется только к конфигам своего протокола, остальные остаются как были.',
+      'col.protocol': 'Протокол',
+      'prof.pickProtocol': 'Протокол...',
+      'prof.needProtocol': 'Выберите, для какого протокола этот профиль',
+      'prof.noProtocol': 'не задан',
+      'prof.created': 'Создан — теперь задайте поля ниже',
+      'prof.editing': 'Редактирование «{name}»',
+      'prof.chooseProtocolFirst': 'У этого профиля нет протокола. Удалите его и создайте новый для нужного протокола.',
+      'prof.confirmDelete': 'Удалить профиль? Конфиги, к которым он был применён, не вернутся назад.',
+      'prof.confirmApply': 'Применить профиль к выбранным конфигам ({count})? Перезаписаны будут только {protocol}.',
+      'prof.applied': 'обновлено: {n}',
+      'prof.wrongProtocol': 'не тронуто: {n} (другой протокол)',
+      'prof.skipped': 'пропущено: {n}',
+      'action.edit': 'Изменить', 'action.delete': 'Удалить',
+      'field.address': 'Адрес (сервер или IP CDN)', 'field.port': 'Порт', 'field.sni': 'SNI',
+      'field.host': 'Заголовок Host', 'field.path': 'Путь', 'field.type': 'Транспорт (сеть)',
+      'field.net': 'Транспорт (сеть)', 'field.headerType': 'Тип заголовка', 'field.tls': 'TLS',
+      'field.security': 'TLS', 'field.fp': 'Отпечаток', 'field.alpn': 'ALPN',
+      'field.flow': 'Flow', 'field.encryption': 'Шифрование', 'field.serviceName': 'Имя сервиса gRPC',
+      'field.mode': 'Режим gRPC', 'field.pbk': 'Публичный ключ Reality', 'field.sid': 'Короткий id Reality',
+      'field.spx': 'spiderX в Reality', 'field.allowInsecure': 'Разрешить небезопасное',
+      'field.insecure': 'Разрешить небезопасное', 'field.method': 'Метод шифрования', 'field.plugin': 'Плагин',
+      'field.obfs': 'Обфускация', 'field.obfs-password': 'Пароль обфускации',
+      'field.congestion_control': 'Контроль перегрузки', 'field.udp_relay_mode': 'Режим UDP-ретрансляции',
+      'field.aid': 'AlterId', 'field.scy': 'Шифрование (scy)',
       'settings.save': 'Сохранить настройки', 'settings.reset': 'Сбросить всё к значениям из .env',
       'editor.title': 'Редактирование конфига', 'editor.alias': 'Псевдоним (remarks)',
       'editor.addParam': 'Добавить параметр', 'editor.result': 'Итоговый URI',
@@ -555,6 +624,31 @@
       'prof.new': '新建模板', 'prof.save': '保存模板', 'prof.empty': '还没有模板。',
       'prof.keepEmpty': '留空则保持不变', 'prof.needName': '请为模板取个名称',
       'prof.pickFirst': '请先选择一个模板', 'prof.pickConfigs': '请选择要应用的配置',
+      'prof.protoLead': '每个模板只针对一种协议。各协议的字段名并不通用 —— vmess 中传输方式叫 "net"，而 "type" 表示伪装类型 —— 所以模板只会应用到同协议的配置，其余保持不变。',
+      'col.protocol': '协议',
+      'prof.pickProtocol': '协议...',
+      'prof.needProtocol': '请选择该模板适用的协议',
+      'prof.noProtocol': '未设置',
+      'prof.created': '已创建 —— 现在设置下面的字段',
+      'prof.editing': '正在编辑“{name}”',
+      'prof.chooseProtocolFirst': '该模板没有协议。请删除后为所需协议新建一个。',
+      'prof.confirmDelete': '删除此模板？已应用过的配置不会还原。',
+      'prof.confirmApply': '将此模板应用到所选的 {count} 个配置？只有 {protocol} 的会被改写。',
+      'prof.applied': '已更新 {n} 个',
+      'prof.wrongProtocol': '{n} 个未改动（其他协议）',
+      'prof.skipped': '跳过 {n} 个',
+      'action.edit': '编辑', 'action.delete': '删除',
+      'field.address': '地址（服务器或 CDN IP）', 'field.port': '端口', 'field.sni': 'SNI',
+      'field.host': 'Host 头', 'field.path': '路径', 'field.type': '传输方式（网络）',
+      'field.net': '传输方式（网络）', 'field.headerType': '伪装类型', 'field.tls': 'TLS',
+      'field.security': 'TLS', 'field.fp': '指纹', 'field.alpn': 'ALPN',
+      'field.flow': 'Flow', 'field.encryption': '加密', 'field.serviceName': 'gRPC 服务名',
+      'field.mode': 'gRPC 模式', 'field.pbk': 'Reality 公钥', 'field.sid': 'Reality short id',
+      'field.spx': 'Reality spiderX', 'field.allowInsecure': '允许不安全连接',
+      'field.insecure': '允许不安全连接', 'field.method': '加密方法', 'field.plugin': '插件',
+      'field.obfs': '混淆', 'field.obfs-password': '混淆密码',
+      'field.congestion_control': '拥塞控制', 'field.udp_relay_mode': 'UDP 中继模式',
+      'field.aid': 'AlterId', 'field.scy': '加密 (scy)',
       'settings.save': '保存设置', 'settings.reset': '全部重置为 .env 的值',
       'editor.title': '编辑配置', 'editor.alias': '别名（remarks）',
       'editor.addParam': '添加参数', 'editor.result': '生成的 URI',
@@ -1349,41 +1443,52 @@
 
   // ---------------------------------------------------------------- profiles
 
-  const prof = { editing: null, list: [] };
+  const prof = { editing: null, list: [], fields: {} };
 
-  // The fields a profile may set. Deliberately the same vocabulary the per-config
-  // editor uses, so a profile can do exactly what a person could do by hand on
-  // one config - and nothing it could not.
-  const PROFILE_FIELDS = [
-    ['address', 'Address (server or CDN IP)'],
-    ['sni', 'SNI'],
-    ['host', 'Host header'],
-    ['path', 'Path'],
-    ['type', 'Transport (ws, grpc, tcp...)'],
-    ['security', 'Security (tls, reality, none)'],
-    ['fp', 'Fingerprint'],
-    ['alpn', 'ALPN'],
-    ['port', 'Port'],
-    ['flow', 'Flow'],
-    ['headerType', 'Header type'],
-    ['serviceName', 'gRPC service name'],
-  ];
+  // Which fields each protocol may set comes from the server, not from a copy
+  // kept here. Protocols disagree about names - vmess spells the transport
+  // "net" and uses "type" for the header type, vless does the opposite - and a
+  // stale list in the browser would write the wrong key into a config, leaving
+  // something that still parses and no longer connects.
+  async function loadProfileFields() {
+    const response = await api('/profiles/fields');
+    prof.fields = response.protocols || {};
+    fillProtocolSelect();
+  }
+
+  function fillProtocolSelect() {
+    const select = document.getElementById('profProto');
+    const current = select.value;
+    select.innerHTML = `<option value="">${esc(t('prof.pickProtocol'))}</option>` +
+      Object.keys(prof.fields).map(name => `<option value="${esc(name)}">${esc(name)}</option>`).join('');
+    select.value = current;
+  }
+
+  // A field's label comes from the server in English; a translation for that
+  // key wins when there is one, so a panel in Persian does not sprout a column
+  // of English halfway down the form.
+  function fieldLabel(field) {
+    const key = 'field.' + field.key;
+    const translated = t(key);
+    return translated === key ? field.label : translated;
+  }
 
   function renderProfiles() {
     const body = document.getElementById('profRows');
     if (!prof.list.length) {
-      body.innerHTML = `<tr><td colspan="4" class="empty">${esc(t('prof.empty'))}</td></tr>`;
+      body.innerHTML = `<tr><td colspan="5" class="empty">${esc(t('prof.empty'))}</td></tr>`;
       return;
     }
     body.innerHTML = prof.list.map(p => {
       const set = Object.entries(p.fields || {}).filter(([, v]) => v).map(([k, v]) => `${k}=${v}`).join(', ');
       return `<tr>
         <td>${esc(p.name)}</td>
+        <td>${p.protocol ? esc(p.protocol) : `<span class="muted">${esc(t('prof.noProtocol'))}</span>`}</td>
         <td>${esc(p.remark || '-')}</td>
         <td class="uri" title="${esc(set)}">${esc(set || '-')}</td>
         <td class="actions">
-          <button class="profedit" data-id="${p.id}">Edit</button>
-          <button class="profdel" data-id="${p.id}">Delete</button>
+          <button class="profedit" data-id="${p.id}">${esc(t('action.edit'))}</button>
+          <button class="profdel" data-id="${p.id}">${esc(t('action.delete'))}</button>
         </td>
       </tr>`;
     }).join('');
@@ -1405,11 +1510,31 @@
 
   function openProfileEditor(profile) {
     prof.editing = profile;
-    document.getElementById('profEditorTitle').textContent = profile ? `Editing "${profile.name}"` : '';
-    document.getElementById('profFields').innerHTML = PROFILE_FIELDS.map(([key, label]) => `
-      <label>${esc(label)}
-        <input data-field="${key}" value="${esc((profile && profile.fields && profile.fields[key]) || '')}" placeholder="${esc(t('prof.keepEmpty'))}">
-      </label>`).join('');
+    const title = document.getElementById('profEditorTitle');
+    const box = document.getElementById('profFields');
+    if (!profile) { document.getElementById('profEditor').hidden = true; return; }
+
+    title.textContent = t('prof.editing').replace('{name}', profile.name) + ' - ' + (profile.protocol || '?');
+
+    const fields = prof.fields[profile.protocol] || [];
+    if (!fields.length) {
+      // A profile saved before profiles had a protocol. Guessing one would
+      // rewrite configs with the wrong field names, so it asks instead.
+      box.innerHTML = `<p class="hint">${esc(t('prof.chooseProtocolFirst'))}</p>`;
+    } else {
+      box.innerHTML = fields.map(field => {
+        const value = (profile.fields && profile.fields[field.key]) || '';
+        const input = field.options
+          ? `<select data-field="${esc(field.key)}">` +
+            field.options.map(option =>
+              `<option value="${esc(option)}"${option === value ? ' selected' : ''}>${esc(option || t('prof.keepEmpty'))}</option>`
+            ).join('') +
+            (field.options.includes(value) ? '' : `<option value="${esc(value)}" selected>${esc(value)}</option>`) +
+            `</select>`
+          : `<input data-field="${esc(field.key)}" value="${esc(value)}" placeholder="${esc(t('prof.keepEmpty'))}">`;
+        return `<label>${esc(fieldLabel(field))}${input}</label>`;
+      }).join('');
+    }
     document.getElementById('profHint').textContent = '';
     document.getElementById('profEditor').hidden = false;
   }
@@ -1419,7 +1544,7 @@
     if (e.target.classList.contains('profedit')) {
       openProfileEditor(prof.list.find(p => p.id === id));
     } else if (e.target.classList.contains('profdel')) {
-      if (!confirm('Delete this profile? Configs it was applied to are not changed back.')) return;
+      if (!confirm(t('prof.confirmDelete'))) return;
       try { await api('/profiles/' + id, { method: 'DELETE' }); toast(t('toast.deleted')); await loadProfiles(); }
       catch (err) { toast(err.message); }
     }
@@ -1427,17 +1552,19 @@
 
   document.getElementById('profNew').onclick = async () => {
     const name = document.getElementById('profName').value.trim();
-    if (!name) return toast(t('prof.needName'));
+    if (!name) { toast(t('prof.needName')); document.getElementById('profName').focus(); return; }
+    const protocol = document.getElementById('profProto').value;
+    if (!protocol) { toast(t('prof.needProtocol')); document.getElementById('profProto').focus(); return; }
     try {
       const created = await api('/profiles', {
         method: 'POST',
-        body: JSON.stringify({ name, remark: document.getElementById('profNote').value.trim(), fields: {} }),
+        body: JSON.stringify({ name, protocol, remark: document.getElementById('profNote').value.trim(), fields: {} }),
       });
       document.getElementById('profName').value = '';
       document.getElementById('profNote').value = '';
       await loadProfiles();
       openProfileEditor(prof.list.find(p => p.id === created.id));
-      toast('Created - now set the fields below');
+      toast(t('prof.created'));
     } catch (err) { toast(err.message); }
   };
 
@@ -1446,8 +1573,8 @@
   document.getElementById('profSave').onclick = async () => {
     if (!prof.editing) return;
     const fields = {};
-    document.querySelectorAll('#profFields input').forEach(input => {
-      const value = input.value.trim();
+    document.querySelectorAll('#profFields [data-field]').forEach(input => {
+      const value = (input.value || '').trim();
       if (value) fields[input.dataset.field] = value;
     });
     try {
@@ -1467,25 +1594,35 @@
     if (!profileId) return toast(t('prof.pickFirst'));
     const hashes = [...state.selected];
     if (!hashes.length) return toast(t('prof.pickConfigs'));
-    if (!confirm(`Apply this profile to ${hashes.length} config(s)? Their URIs are rewritten.`)) return;
+    const profile = prof.list.find(p => p.id === profileId);
+    if (profile && !profile.protocol) return toast(t('prof.chooseProtocolFirst'));
+    if (!confirm(t('prof.confirmApply').replace('{count}', hashes.length).replace('{protocol}', (profile && profile.protocol) || '?'))) return;
     try {
       const result = await api('/profiles/apply', {
         method: 'POST',
         body: JSON.stringify({ profile_id: profileId, uri_hashes: hashes }),
       });
-      toast(result.detail || `${result.applied} updated${result.skipped ? `, ${result.skipped} skipped` : ''}`);
+      // Say what happened to every config the owner selected, not just the
+      // ones that changed - a silent "0 updated" on a mixed selection looks
+      // like a bug when it is the protocol guard doing its job.
+      const parts = [t('prof.applied').replace('{n}', result.applied)];
+      if (result.wrong_protocol) parts.push(t('prof.wrongProtocol').replace('{n}', result.wrong_protocol));
+      if (result.skipped) parts.push(t('prof.skipped').replace('{n}', result.skipped));
+      toast(result.detail || parts.join(', '));
       clearSelection();
       await loadPool();
     } catch (err) { toast(err.message); }
   };
 
   // profiles populate a control on the pool tab, so they are loaded up front
-  loadProfiles().catch(() => {});
+  loadProfileFields().then(loadProfiles).catch(() => {});
 
   // A language switch changes strings that live in rendered rows and counters,
   // not just in the markup, so the visible tab has to be drawn again.
   function rerenderAll() {
     loadStatus().catch(() => {});
+    fillProtocolSelect();
+    if (prof.editing) openProfileEditor(prof.editing);
     const active = document.querySelector('.tabs button[aria-selected="true"]');
     const tab = active ? active.dataset.tab : 'pool';
     ({ pool: loadPool, candidates: loadCandidates, groups: loadGroups,

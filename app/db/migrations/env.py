@@ -10,6 +10,8 @@ from alembic import context
 
 from app.db.base import Base
 from app.db.compiles_types import SqliteCompatibleBigInteger
+from config import database_settings
+
 # Importing app.db above registers the upstream tables on Base.metadata; this
 # fork's tables live outside that package and must be imported here too.
 # Without it, autogenerate compares a database that has them against a metadata

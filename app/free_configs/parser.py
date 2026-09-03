@@ -23,6 +23,23 @@ SUPPORTED_SCHEMES = (
 )
 
 
+# C0 control characters (tab excepted) and DEL, mapped to nothing.
+#
+# These reach us from truncated or binary-corrupt source bodies, which base64
+# decoding with errors="ignore" happily passes through. A proxy URI never
+# legitimately contains one, and PostgreSQL rejects the NUL outright - text
+# columns cannot hold 0x00 - so an entire refresh died with
+# CharacterNotInRepertoireError once a single such line was harvested. SQLite
+# stores them without complaint, which is why this only ever appeared on
+# Postgres. Cleaning at the parser boundary keeps the difference out of every
+# layer above it.
+_CONTROL_CHARS = {code: None for code in range(0x20) if code != 0x09} | {0x7F: None}
+
+
+def strip_control_chars(text: str) -> str:
+    return text.translate(_CONTROL_CHARS)
+
+
 def _strip_remark(uri: str) -> str:
     """Return the URI with its display name removed, for identity comparison.
 
@@ -100,7 +117,7 @@ def decode_body(text: str, is_base64: bool) -> list[str]:
         except (binascii.Error, ValueError, UnicodeDecodeError):
             return []
 
-    return [line.strip() for line in text.splitlines() if line.strip()]
+    return [cleaned for line in text.splitlines() if (cleaned := strip_control_chars(line).strip())]
 
 
 def looks_like_config(line: str) -> bool:
@@ -113,7 +130,9 @@ def parse_uri(uri: str) -> ParsedConfig | None:
     Returns ``None`` when the URI is malformed or its scheme is unsupported -
     callers treat that as "skip this entry".
     """
-    uri = uri.strip()
+    # cleaned here as well as in decode_body: this is also the entry point for
+    # configs an admin adds by hand, which never pass through a source body
+    uri = strip_control_chars(uri).strip()
     if not looks_like_config(uri):
         return None
 
@@ -129,11 +148,13 @@ def parse_uri(uri: str) -> ParsedConfig | None:
 
 def _parse_vmess(uri: str) -> ParsedConfig | None:
     payload = json.loads(_b64decode(uri[len("vmess://") :]))
-    address = str(payload.get("add") or "").strip()
+    # the payload is base64, so a control character inside it survives the
+    # cleaning done on the URI text itself and has to be removed here
+    address = strip_control_chars(str(payload.get("add") or "")).strip()
     port = int(payload.get("port") or 0)
     if not address or not (0 < port < 65536):
         return None
-    sni = str(payload.get("sni") or payload.get("host") or "").strip().lower()
+    sni = strip_control_chars(str(payload.get("sni") or payload.get("host") or "")).strip().lower()
     return ParsedConfig(uri=uri, protocol="vmess", address=address, port=port, sni=sni)
 
 
@@ -152,7 +173,9 @@ def _parse_shadowsocks(uri: str) -> ParsedConfig | None:
     hostport = decoded.rsplit("@", 1)[1]
     if ":" not in hostport:
         return None
+    # same reasoning as vmess: this host came out of a base64 blob
     address, _, port_raw = hostport.rpartition(":")
+    address = strip_control_chars(address).strip()
     port = int(port_raw.split("/", 1)[0])
     if not address or not (0 < port < 65536):
         return None

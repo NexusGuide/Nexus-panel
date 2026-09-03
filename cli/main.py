@@ -22,10 +22,13 @@ def cmd_generate_temp_key():
 
 @app.command()
 def version():
-    """Show PasarGuard version."""
-    from app import __version__
+    """Show the panel version."""
+    from app.version import UPSTREAM_VERSION, __version__
 
-    console.print(f"[bold blue]PasarGuard[/bold blue] version [bold green]{__version__}[/bold green]")
+    console.print(
+        f"[bold blue]Nexus Panel[/bold blue] version [bold green]{__version__}[/bold green] "
+        f"(based on PasarGuard {UPSTREAM_VERSION})"
+    )
 
 
 if __name__ == "__main__":

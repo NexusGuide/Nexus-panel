@@ -13,6 +13,7 @@ from app.free_configs.parser import (
     looks_like_config,
     parse_many,
     parse_uri,
+    strip_control_chars,
 )
 
 
@@ -209,3 +210,69 @@ def test_labelled_uri_still_parses():
     parsed = parse_uri(labelled)
     assert parsed is not None
     assert (parsed.address, parsed.port) == ("1.2.3.4", 443)
+
+
+# --- control characters --------------------------------------------------
+#
+# A NUL harvested from one corrupt source line used to abort an entire refresh
+# on PostgreSQL, whose text columns cannot hold 0x00. SQLite accepts it, so the
+# failure only appeared once the panel ran on TimescaleDB - hence these tests
+# cover every path a config can take into the database, not just the obvious one.
+
+
+def test_decode_body_strips_control_characters():
+    body = "vless://uuid@example.com:443?sni=a.b#name\x00tail\ntrojan://p@host.net:443#ok\n"
+    lines = decode_body(body, is_base64=False)
+    assert lines == ["vless://uuid@example.com:443?sni=a.b#nametail", "trojan://p@host.net:443#ok"]
+
+
+def test_decode_body_strips_control_characters_from_base64_bodies():
+    body = "vless://uuid@example.com:443#name\x00tail\n"
+    encoded = base64.b64encode(body.encode()).decode()
+    assert decode_body(encoded, is_base64=True) == ["vless://uuid@example.com:443#nametail"]
+
+
+def test_vmess_payload_control_characters_are_stripped():
+    # the payload is base64, so cleaning the URI text cannot reach inside it
+    uri = _vmess({"add": "cdn.example.com\x00", "port": 443, "host": "cdn.example.com\x00", "ps": "x"})
+    parsed = parse_uri(uri)
+    assert parsed is not None
+    assert parsed.address == "cdn.example.com"
+    assert parsed.sni == "cdn.example.com"
+
+
+def test_legacy_shadowsocks_control_characters_are_stripped():
+    uri = "ss://" + base64.b64encode(b"aes-256-gcm:pw@host.example\x00:8388").decode()
+    parsed = parse_uri(uri)
+    assert parsed is not None
+    assert (parsed.address, parsed.port) == ("host.example", 8388)
+
+
+def test_no_parsed_field_carries_a_control_character():
+    uri = _vmess({"add": "a.example\x00", "port": 443, "ps": "n\x00"})
+    lines = decode_body(
+        "\n".join(
+            [
+                "vless://u@a.example:443?sni=a.example#n\x00",
+                uri,
+                "ss://" + base64.b64encode(b"aes-256-gcm:pw@b.example\x00:8388").decode(),
+                "trojan://p@c.example:443#fine",
+            ]
+        ),
+        is_base64=False,
+    )
+    parsed = [config for line in lines if (config := parse_uri(line)) is not None]
+    assert len(parsed) == 4
+    for config in parsed:
+        for field in (config.uri, config.protocol, config.address, config.sni):
+            assert "\x00" not in field
+
+
+def test_tab_survives_cleaning():
+    # tab is legal in text and stripping it would be over-reach
+    assert strip_control_chars("a\tb") == "a\tb"
+
+
+def test_cleaning_does_not_change_identity_of_clean_configs():
+    uri = "vless://uuid@a.example:443?sni=a.example#name"
+    assert parse_uri(uri).uri_hash == parse_uri(uri + "\x00").uri_hash

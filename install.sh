@@ -47,6 +47,8 @@ COMPOSE_FILE="${APP_DIR}/docker-compose.yml"
 ENV_FILE="${APP_DIR}/.env"
 
 DO_SEED=1
+# set by --image: only then does a locally present image mean "do not pull"
+IMAGE_OVERRIDDEN=0
 ENABLE=true
 
 RED=$'\033[31m'; GREEN=$'\033[32m'; YELLOW=$'\033[33m'; BOLD=$'\033[1m'; RESET=$'\033[0m'
@@ -58,6 +60,17 @@ require_root() { [ "$(id -u)" -eq 0 ] || die "run this as root (use sudo)"; }
 
 compose() { docker compose -f "$COMPOSE_FILE" "$@"; }
 
+# The panel's code lives at /code, but `compose exec` does not reliably land
+# there: seeding failed with `can't open file '//scripts/seed_free_configs.py'`,
+# which is Python resolving a relative path against a working directory of "/".
+# Pinning it here fixes the seed and, with it, the readiness probe that had been
+# timing out for the same reason while the tables already existed.
+panel_exec() {
+    local svc
+    svc="$(compose config --services | head -1)"
+    compose exec -T -w /code "$svc" "$@"
+}
+
 run_upstream() {
     # $1 = subcommand, rest = passthrough flags
     local script
@@ -66,7 +79,26 @@ run_upstream() {
     curl -fsSL "$UPSTREAM_INSTALLER" -o "$script" || die "could not download ${UPSTREAM_INSTALLER}"
     chmod +x "$script"
     info "running the official installer: $*"
-    bash "$script" "$@"
+    warn "it ends by tailing the container logs - press Ctrl+C there and this"
+    warn "script will carry on and apply the fork"
+
+    # The official installer finishes with `docker compose logs -f`, which blocks
+    # until interrupted. Without a trap, that Ctrl+C reaches this script too and
+    # kills it before apply_fork runs - which looks exactly like a successful
+    # install of upstream, with none of the fork in it. A *handled* trap (rather
+    # than an ignored one) is reset to the default in the child, so the installer
+    # still stops on Ctrl+C while this shell survives to finish the job.
+    local status=0
+    trap 'echo' INT
+    bash "$script" "$@" || status=$?
+    trap - INT
+
+    # 130 is the log tail being interrupted, which is the normal way that
+    # installer ends. Anything else is a real failure.
+    if [ "$status" -ne 0 ] && [ "$status" -ne 130 ]; then
+        rm -f "$script"
+        die "the official installer exited with status ${status}"
+    fi
     rm -f "$script"
 }
 
@@ -152,8 +184,13 @@ EOF
     set_env FREE_CONFIGS_MAX_CONCURRENCY 50
 
     info "pulling and restarting ..."
-    if docker image inspect "$IMAGE" >/dev/null 2>&1; then
-        info "using the local image ${IMAGE} (already built here, skipping pull)"
+    # Only an explicit --image means "this was built here, do not go looking for
+    # it in a registry". Skipping the pull merely because the image is present
+    # locally was wrong for the published one: after the first apply it is always
+    # present, so every later apply silently kept running the old image and no
+    # amount of re-running would ever pick up a new release.
+    if [ "$IMAGE_OVERRIDDEN" -eq 1 ] && docker image inspect "$IMAGE" >/dev/null 2>&1; then
+        info "using the local image ${IMAGE} (built here, skipping pull)"
     elif ! compose pull; then
         warn "could not pull ${IMAGE}"
         warn "if the GHCR package is still private, make it public:"
@@ -179,10 +216,9 @@ EOF
     # fails with "no such table: free_config_sources". So wait for the schema,
     # not for the container.
     info "waiting for the panel to finish its migrations ..."
-    local svc ready=0
-    svc="$(compose config --services | head -1)"
+    local ready=0
     for _ in $(seq 1 90); do
-        if compose exec -T "$svc" python -c \
+        if panel_exec python -c \
             "import asyncio
 from sqlalchemy import text
 from app.db import GetDB
@@ -202,9 +238,7 @@ asyncio.run(m())" >/dev/null 2>&1; then
 }
 
 pool_size() {
-    local svc
-    svc="$(compose config --services | head -1)"
-    compose exec -T "$svc" python -c \
+    panel_exec python -c \
         "import asyncio; from app.db import GetDB; from app.free_configs import crud
 async def m():
     async with GetDB() as db: print((await crud.get_pool_stats(db)).get('total', 0))
@@ -212,11 +246,8 @@ asyncio.run(m())" 2>/dev/null | tr -dc '0-9'
 }
 
 seed_and_refresh() {
-    local svc
-    svc="$(compose config --services | head -1)"
-
     info "adding the default community sources ..."
-    compose exec -T "$svc" python scripts/seed_free_configs.py \
+    panel_exec python scripts/seed_free_configs.py \
         || { warn "seeding failed - add sources via POST /api/free-configs/sources"; return; }
 
     # Re-applying the fork (after an official update, say) should not spend a
@@ -230,7 +261,7 @@ seed_and_refresh() {
     fi
 
     info "building the pool for the first time (fetches and health-checks; takes a while) ..."
-    compose exec -T "$svc" python -c \
+    panel_exec python -c \
         "import asyncio, json; from app.free_configs.service import refresh_pool; print(json.dumps(asyncio.run(refresh_pool()), indent=2))" \
         || warn "the first refresh did not finish - the scheduled job will retry"
 }
@@ -261,7 +292,7 @@ EOF
 cmd_refresh() {
     local svc
     svc="$(compose config --services | head -1)"
-    compose exec -T "$svc" python -c \
+    panel_exec python -c \
         "import asyncio, json; from app.free_configs.service import refresh_pool; print(json.dumps(asyncio.run(refresh_pool()), indent=2))"
 }
 
@@ -275,7 +306,7 @@ main() {
     local passthrough=()
     while [ $# -gt 0 ]; do
         case "$1" in
-            --image)     IMAGE="$2"; shift 2 ;;
+            --image)     IMAGE="$2"; IMAGE_OVERRIDDEN=1; shift 2 ;;
             --no-seed)   DO_SEED=0; shift ;;
             --no-enable) ENABLE=false; shift ;;
             *)           passthrough+=("$1"); shift ;;

@@ -83,24 +83,24 @@
 </head>
 <body>
 
-<h2>Free Configs</h2>
+<h2 data-i18n="title">Free Configs</h2>
 <div class="sub" id="subtitle">Community proxies harvested, checked, and appended to subscriptions.</div>
 
 <div class="cards" id="stats"></div>
 
 <div class="tabs" role="tablist">
-  <button role="tab" aria-selected="true" data-tab="pool">Pool</button>
-  <button role="tab" aria-selected="false" data-tab="candidates">Candidates <span id="candBadge" class="pill" hidden></span></button>
-  <button role="tab" aria-selected="false" data-tab="groups">Groups</button>
-  <button role="tab" aria-selected="false" data-tab="sources">Sources</button>
-  <button role="tab" aria-selected="false" data-tab="profiles">Profiles</button>
-  <button role="tab" aria-selected="false" data-tab="settings">Settings</button>
+  <button role="tab" aria-selected="true" data-tab="pool" data-i18n="tab.pool">Pool</button>
+  <button role="tab" aria-selected="false" data-tab="candidates"><span data-i18n="tab.candidates">Candidates</span> <span id="candBadge" class="pill" hidden></span></button>
+  <button role="tab" aria-selected="false" data-tab="groups" data-i18n="tab.groups">Groups</button>
+  <button role="tab" aria-selected="false" data-tab="sources" data-i18n="tab.sources">Sources</button>
+  <button role="tab" aria-selected="false" data-tab="profiles" data-i18n="tab.profiles">Profiles</button>
+  <button role="tab" aria-selected="false" data-tab="settings" data-i18n="tab.settings">Settings</button>
 </div>
 
 <section id="tab-pool">
   <div class="row" style="margin-bottom:10px">
-    <input class="grow" id="q" type="search" placeholder="Search address or URI...">
-    <select id="protocol"><option value="">All protocols</option></select>
+    <input class="grow" id="q" type="search" placeholder="Search address or URI..." data-i18n-ph="pool.search">
+    <select id="protocol"><option value="" data-i18n="pool.allProtocols">All protocols</option></select>
     <select id="status">
       <option value="all">All</option>
       <option value="enabled">Enabled</option>
@@ -108,43 +108,43 @@
       <option value="manual">Manual</option>
       <option value="unhealthy">Unreachable</option>
     </select>
-    <button id="refreshPool">Reload</button>
-    <button id="rebuild" class="primary">Rebuild pool</button>
+    <button id="refreshPool" data-i18n="action.reload">Reload</button>
+    <button id="rebuild" class="primary" data-i18n="action.rebuild">Rebuild pool</button>
   </div>
 
   <div class="row" style="margin-bottom:10px">
-    <input class="grow" id="manualUri" placeholder="Add a config by hand: vless://... , vmess://... , ss://...">
-    <input id="manualRemark" placeholder="Name (optional)" style="width:170px">
-    <button id="addManual">Add</button>
+    <input class="grow" id="manualUri" placeholder="Add a config by hand: vless://... , vmess://... , ss://..." data-i18n-ph="pool.manualPlaceholder">
+    <input id="manualRemark" placeholder="Name (optional)" data-i18n-ph="name.optional" style="width:170px">
+    <button id="addManual" data-i18n="action.add">Add</button>
   </div>
 
   <div class="row" id="bulkbar" style="margin-bottom:10px">
     <span class="muted" id="selcount">0 selected</span>
-    <button id="bulkOn" disabled>Enable selected</button>
-    <button id="bulkOff" disabled>Disable selected</button>
-    <span class="muted" style="margin-inline-start:8px">Group:</span>
+    <button id="bulkOn" disabled data-i18n="bulk.enable">Enable selected</button>
+    <button id="bulkOff" disabled data-i18n="bulk.disable">Disable selected</button>
+    <span class="muted" style="margin-inline-start:8px" data-i18n="bulk.group">Group:</span>
     <select id="bulkGroup" style="min-width:150px"></select>
-    <button id="bulkAssign" disabled>Add to group</button>
-    <button id="bulkUnassign" disabled>Remove from group</button>
-    <span class="muted" style="margin-inline-start:8px">Profile:</span>
+    <button id="bulkAssign" disabled data-i18n="bulk.addToGroup">Add to group</button>
+    <button id="bulkUnassign" disabled data-i18n="bulk.removeFromGroup">Remove from group</button>
+    <span class="muted" style="margin-inline-start:8px" data-i18n="bulk.profile">Profile:</span>
     <select id="poolProfile" style="min-width:150px"><option value="">Apply profile...</option></select>
-    <button id="applyProfile" disabled>Apply to selected</button>
+    <button id="applyProfile" disabled data-i18n="bulk.applyToSelected">Apply to selected</button>
   </div>
 
   <div class="wrap">
     <table>
       <thead><tr>
         <th style="width:28px"><input type="checkbox" id="selall"></th>
-        <th>On</th><th>Protocol</th><th>Address</th><th>SNI / Host</th><th>Port</th>
-        <th>Latency</th><th>State</th><th>Name</th><th>URI</th><th></th>
+        <th data-i18n="col.on">On</th><th data-i18n="col.protocol">Protocol</th><th data-i18n="col.address">Address</th><th data-i18n="col.sni">SNI / Host</th><th data-i18n="col.port">Port</th>
+        <th data-i18n="col.latency">Latency</th><th data-i18n="col.state">State</th><th data-i18n="col.name">Name</th><th data-i18n="col.uri">URI</th><th></th>
       </tr></thead>
       <tbody id="rows"></tbody>
     </table>
   </div>
   <div class="row" style="margin-top:10px">
-    <button id="prev">Previous</button>
+    <button id="prev" data-i18n="page.previous">Previous</button>
     <span class="muted" id="pageinfo"></span>
-    <button id="next">Next</button>
+    <button id="next" data-i18n="page.next">Next</button>
   </div>
 </section>
 
@@ -156,7 +156,7 @@
   </p>
   <div class="wrap">
     <table>
-      <thead><tr><th>Receives free configs</th><th>Group</th><th>Gets</th><th></th></tr></thead>
+      <thead><tr><th data-i18n="groups.receives">Receives free configs</th><th data-i18n="col.group">Group</th><th data-i18n="col.gets">Gets</th><th></th></tr></thead>
       <tbody id="groupRows"></tbody>
     </table>
   </div>
@@ -164,15 +164,15 @@
   <div id="groupEditor" hidden>
     <div class="section">Configs for <span id="geName"></span></div>
     <div class="row" style="margin-bottom:8px">
-      <input class="grow" id="geSearch" type="search" placeholder="Search this group's choices...">
+      <input class="grow" id="geSearch" type="search" placeholder="Search this group's choices..." data-i18n-ph="groups.search">
       <span class="muted" id="geCount"></span>
-      <button id="geClear">Give it the whole pool</button>
-      <button id="geSave" class="primary">Save</button>
-      <button id="geClose">Close</button>
+      <button id="geClear" data-i18n="groups.wholePool">Give it the whole pool</button>
+      <button id="geSave" class="primary" data-i18n="action.save">Save</button>
+      <button id="geClose" data-i18n="action.close">Close</button>
     </div>
     <div class="wrap" style="max-height:360px; overflow-y:auto">
       <table>
-        <thead><tr><th style="width:28px"></th><th>Protocol</th><th>Address</th><th>SNI / Host</th><th>Name</th></tr></thead>
+        <thead><tr><th style="width:28px"></th><th data-i18n="col.protocol">Protocol</th><th data-i18n="col.address">Address</th><th data-i18n="col.sni">SNI / Host</th><th data-i18n="col.name">Name</th></tr></thead>
         <tbody id="geRows"></tbody>
       </table>
     </div>
@@ -181,15 +181,15 @@
 
 <section id="tab-sources" hidden>
   <div class="row" style="margin-bottom:10px">
-    <input class="grow" id="srcUrl" placeholder="https://example.com/list.txt">
-    <input id="srcRemark" placeholder="Name (optional)" style="width:170px">
+    <input class="grow" id="srcUrl" placeholder="https://example.com/list.txt" data-i18n-ph="sources.urlPlaceholder">
+    <input id="srcRemark" placeholder="Name (optional)" data-i18n-ph="name.optional" style="width:170px">
     <label class="row" style="gap:5px"><input type="checkbox" id="srcB64"> base64 body</label>
-    <button id="addSource" class="primary">Add source</button>
-    <button id="addDefaults" title="Add the built-in community lists that are not configured yet">Add default sources</button>
+    <button id="addSource" class="primary" data-i18n="sources.add">Add source</button>
+    <button id="addDefaults" title="Add the built-in community lists that are not configured yet" data-i18n-title="sources.addDefaultsTitle" data-i18n="sources.addDefaults">Add default sources</button>
   </div>
   <div class="wrap">
     <table>
-      <thead><tr><th>On</th><th>Name</th><th>URL</th><th>Last fetch</th><th>Count</th><th>Error</th><th></th></tr></thead>
+      <thead><tr><th data-i18n="col.on">On</th><th data-i18n="col.name">Name</th><th data-i18n="col.url">URL</th><th data-i18n="col.lastFetch">Last fetch</th><th data-i18n="col.count">Count</th><th data-i18n="col.error">Error</th><th></th></tr></thead>
       <tbody id="srcRows"></tbody>
     </table>
   </div>
@@ -201,31 +201,31 @@
     move something across, so a bad rebuild can never take a working pool away from you.
   </p>
   <div class="row" style="margin-bottom:10px">
-    <input class="grow" id="candQ" type="search" placeholder="Search address or URI...">
-    <select id="candProto"><option value="">All protocols</option></select>
-    <button id="candReload">Reload</button>
+    <input class="grow" id="candQ" type="search" placeholder="Search address or URI..." data-i18n-ph="pool.search">
+    <select id="candProto"><option value="" data-i18n="pool.allProtocols">All protocols</option></select>
+    <button id="candReload" data-i18n="action.reload">Reload</button>
   </div>
   <div class="row" style="margin-bottom:10px">
     <span id="candCount" class="muted">0 selected</span>
-    <button id="candAdd" class="primary">Add selected to pool</button>
-    <button id="candDrop">Discard selected</button>
+    <button id="candAdd" class="primary" data-i18n="cand.addSelected">Add selected to pool</button>
+    <button id="candDrop" data-i18n="cand.discardSelected">Discard selected</button>
     <span style="flex:1"></span>
-    <button id="candAddAll">Add all</button>
-    <button id="candDropAll">Discard all</button>
+    <button id="candAddAll" data-i18n="cand.addAll">Add all</button>
+    <button id="candDropAll" data-i18n="cand.discardAll">Discard all</button>
   </div>
   <div class="wrap">
     <table>
       <thead><tr>
         <th><input type="checkbox" id="candAll"></th>
-        <th>Protocol</th><th>Address</th><th>SNI / Host</th><th>Port</th><th>Latency</th><th>URI</th>
+        <th data-i18n="col.protocol">Protocol</th><th data-i18n="col.address">Address</th><th data-i18n="col.sni">SNI / Host</th><th data-i18n="col.port">Port</th><th data-i18n="col.latency">Latency</th><th data-i18n="col.uri">URI</th>
       </tr></thead>
       <tbody id="candRows"></tbody>
     </table>
   </div>
   <div class="row" style="margin-top:10px">
-    <button id="candPrev">Previous</button>
+    <button id="candPrev" data-i18n="page.previous">Previous</button>
     <span id="candPage" class="muted"></span>
-    <button id="candNext">Next</button>
+    <button id="candNext" data-i18n="page.next">Next</button>
   </div>
 </section>
 
@@ -236,13 +236,13 @@
     already had it.
   </p>
   <div class="row" style="margin-bottom:10px">
-    <input id="profName" placeholder="Profile name" style="width:200px">
-    <input class="grow" id="profNote" placeholder="What is it for? (optional)">
-    <button id="profNew" class="primary">New profile</button>
+    <input id="profName" placeholder="Profile name" data-i18n-ph="prof.namePlaceholder" style="width:200px">
+    <input class="grow" id="profNote" placeholder="What is it for? (optional)" data-i18n-ph="prof.notePlaceholder">
+    <button id="profNew" class="primary" data-i18n="prof.new">New profile</button>
   </div>
   <div class="wrap">
     <table>
-      <thead><tr><th>Name</th><th>Note</th><th>Sets</th><th></th></tr></thead>
+      <thead><tr><th data-i18n="col.name">Name</th><th data-i18n="col.note">Note</th><th data-i18n="col.sets">Sets</th><th></th></tr></thead>
       <tbody id="profRows"></tbody>
     </table>
   </div>
@@ -251,8 +251,8 @@
     <h3 id="profEditorTitle" style="margin:0 0 8px"></h3>
     <div class="grid2" id="profFields"></div>
     <div class="row" style="margin-top:12px">
-      <button id="profSave" class="primary">Save profile</button>
-      <button id="profClose">Close</button>
+      <button id="profSave" class="primary" data-i18n="prof.save">Save profile</button>
+      <button id="profClose" data-i18n="action.close">Close</button>
       <span id="profHint" class="muted"></span>
     </div>
   </div>
@@ -262,8 +262,8 @@
   <div class="note" id="envNote" hidden></div>
   <div class="grid2" id="settingsForm"></div>
   <div class="row" style="margin-top:14px">
-    <button id="saveSettings" class="primary">Save settings</button>
-    <button id="resetSettings">Reset all to .env defaults</button>
+    <button id="saveSettings" class="primary" data-i18n="settings.save">Save settings</button>
+    <button id="resetSettings" data-i18n="settings.reset">Reset all to .env defaults</button>
   </div>
   <p class="hint" style="margin-top:12px">
     An empty field means "use the value from <code>.env</code>". <code>FREE_CONFIGS_ENABLED</code>
@@ -275,27 +275,27 @@
 <div id="overlay">
   <div id="editor" role="dialog" aria-modal="true" aria-labelledby="edTitle">
     <header>
-      <h3 id="edTitle">Edit config</h3>
+      <h3 id="edTitle" data-i18n="editor.title">Edit config</h3>
       <span class="pill" id="edProto"></span>
-      <button id="edClose">Close</button>
+      <button id="edClose" data-i18n="action.close">Close</button>
     </header>
     <div class="body">
-      <div class="frow"><label for="edAlias">Alias (remarks)</label><input id="edAlias"><span></span></div>
-      <div class="frow"><label for="edAddress">Address</label><input id="edAddress"><span></span></div>
-      <div class="frow"><label for="edPort">Port</label><input id="edPort" type="number" min="1" max="65535"><span></span></div>
+      <div class="frow"><label for="edAlias" data-i18n="editor.alias">Alias (remarks)</label><input id="edAlias"><span></span></div>
+      <div class="frow"><label for="edAddress" data-i18n="col.address">Address</label><input id="edAddress"><span></span></div>
+      <div class="frow"><label for="edPort" data-i18n="col.port">Port</label><input id="edPort" type="number" min="1" max="65535"><span></span></div>
       <div id="edFields"></div>
       <div class="section">Add a parameter</div>
       <div class="row">
         <select id="edAdd" class="grow"></select>
-        <input id="edAddCustom" placeholder="or type a key of your own" style="width:210px">
-        <button id="edAddBtn">Add</button>
+        <input id="edAddCustom" placeholder="or type a key of your own" data-i18n-ph="editor.ownKey" style="width:210px">
+        <button id="edAddBtn" data-i18n="action.add">Add</button>
       </div>
       <div class="section">Resulting URI</div>
       <textarea id="uriPreview" readonly></textarea>
     </div>
     <footer>
-      <button id="edSave" class="primary">Save</button>
-      <button id="edCancel">Cancel</button>
+      <button id="edSave" class="primary" data-i18n="action.save">Save</button>
+      <button id="edCancel" data-i18n="action.cancel">Cancel</button>
       <span class="hint" id="edHint" style="margin-inline-start:auto"></span>
     </footer>
   </div>
@@ -335,6 +335,24 @@
     toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
   }
 
+  // A validation failure arrives as FastAPI's list of {loc, msg, type}. Showing
+  // JSON.stringify of that is the same as showing nothing - it is unreadable in
+  // a toast, so the message that would tell you exactly what is wrong with your
+  // input gets lost in punctuation.
+  function readableDetail(detail) {
+    if (typeof detail === 'string') return detail;
+    if (Array.isArray(detail)) {
+      const messages = detail.map(entry => {
+        if (typeof entry === 'string') return entry;
+        const field = Array.isArray(entry.loc) ? entry.loc[entry.loc.length - 1] : '';
+        const message = entry.msg || entry.type || 'invalid';
+        return field && field !== 'body' ? `${field}: ${message}` : message;
+      }).filter(Boolean);
+      if (messages.length) return messages.join('; ');
+    }
+    try { return JSON.stringify(detail); } catch { return 'Request failed'; }
+  }
+
   async function api(path, options = {}) {
     const response = await fetch(API + path, {
       ...options,
@@ -347,7 +365,7 @@
       let detail = response.status + ' ' + response.statusText;
       try {
         const body = await response.json();
-        if (body && body.detail) detail = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail);
+        if (body && body.detail) detail = readableDetail(body.detail);
       } catch { /* keep the status line */ }
       throw new Error(detail);
     }
@@ -373,20 +391,253 @@
 
   // ---------------------------------------------------------------- stats
 
+
+  // ---------------------------------------------------------------- language
+  //
+  // This page is served as plain HTML inside the dashboard's iframe, so it does
+  // not share the dashboard's i18next instance. It shares something better: the
+  // same origin, and therefore the same localStorage. The dashboard records the
+  // chosen language there, so reading that key is enough to follow it - and the
+  // storage event fires in this document when the dashboard writes a new one,
+  // which is how the page re-renders the moment you switch language rather than
+  // waiting for a reload.
+
+  const I18N = {
+    en: {
+      // Only the strings that live in JavaScript rather than in the markup.
+      // Everything with a data-i18n attribute takes its English from the page.
+      'sources.needUrl': 'Paste the URL of a list first',
+      'sources.needScheme': 'The URL must start with http:// or https://',
+      'sources.added': 'Source added',
+      'cand.empty': 'Nothing waiting. Press "Rebuild pool" to look for configs.',
+      'prof.empty': 'No profiles yet.',
+      'prof.keepEmpty': 'leave empty to keep',
+      'prof.needName': 'Give the profile a name',
+      'prof.pickFirst': 'Pick a profile first',
+      'prof.pickConfigs': 'Select the configs to apply it to',
+      'stat.inPool': 'In pool', 'stat.reachable': 'Reachable', 'stat.off': 'Switched off',
+      'stat.manual': 'Added by hand', 'stat.waiting': 'Waiting to choose', 'stat.perSub': 'Per subscription',
+      'toast.saved': 'Saved', 'toast.deleted': 'Deleted', 'toast.nothingSelected': 'Nothing selected',
+      'state.active': 'Active', 'state.off': 'Switched off', 'state.never': 'never',
+      'selected': 'selected',
+    },
+    fa: {
+      'title': 'کانفیگ‌های رایگان',
+      'subtitle.lead': 'پروکسی‌های عمومی که جمع‌آوری، بررسی و به اشتراک‌ها اضافه می‌شوند.',
+      'tab.pool': 'استخر', 'tab.candidates': 'کاندیداها', 'tab.groups': 'گروه‌ها',
+      'tab.sources': 'منابع', 'tab.profiles': 'پروفایل‌ها', 'tab.settings': 'تنظیمات',
+      'pool.search': 'جست‌وجوی آدرس یا URI...', 'pool.allProtocols': 'همه‌ی پروتکل‌ها',
+      'filter.all': 'همه', 'filter.enabled': 'فعال', 'filter.disabled': 'غیرفعال',
+      'filter.manual': 'دستی', 'filter.unreachable': 'در دسترس نیست',
+      'action.reload': 'بارگذاری دوباره', 'action.rebuild': 'بازسازی استخر', 'action.add': 'افزودن',
+      'pool.manualPlaceholder': 'افزودن دستی کانفیگ: vless://... ، vmess://... ، ss://...',
+      'name.optional': 'نام (اختیاری)',
+      'bulk.enable': 'فعال کردن انتخاب‌شده‌ها', 'bulk.disable': 'غیرفعال کردن انتخاب‌شده‌ها',
+      'bulk.group': 'گروه:', 'bulk.addToGroup': 'افزودن به گروه', 'bulk.removeFromGroup': 'حذف از گروه',
+      'bulk.profile': 'پروفایل:', 'bulk.applyProfile': 'انتخاب پروفایل...', 'bulk.applyToSelected': 'اعمال بر انتخاب‌شده‌ها',
+      'col.on': 'فعال', 'col.protocol': 'پروتکل', 'col.address': 'آدرس', 'col.sni': 'SNI / هاست',
+      'col.port': 'پورت', 'col.latency': 'تأخیر', 'col.state': 'وضعیت', 'col.name': 'نام', 'col.uri': 'URI',
+      'col.url': 'آدرس', 'col.lastFetch': 'آخرین دریافت', 'col.count': 'تعداد', 'col.error': 'خطا',
+      'col.note': 'یادداشت', 'col.sets': 'تنظیم می‌کند', 'col.group': 'گروه', 'col.gets': 'دریافت می‌کند',
+      'page.previous': 'قبلی', 'page.next': 'بعدی',
+      'groups.lead': 'گروه دقیقاً مثل اینباندها کار می‌کند: کانفیگ‌های مشخصی به آن می‌دهی و اعضایش همان‌ها را می‌گیرند.',
+      'groups.receives': 'کانفیگ رایگان می‌گیرد', 'groups.configsFor': 'کانفیگ‌های',
+      'groups.wholePool': 'کل استخر را بده', 'groups.search': 'جست‌وجو در انتخاب‌های این گروه...',
+      'action.save': 'ذخیره', 'action.close': 'بستن', 'action.cancel': 'انصراف',
+      'sources.b64': 'بدنه base64', 'sources.add': 'افزودن منبع', 'sources.addDefaults': 'افزودن منابع پیش‌فرض',
+      'sources.addDefaultsTitle': 'افزودن لیست‌های عمومی داخلی که هنوز تنظیم نشده‌اند',
+      'sources.urlPlaceholder': 'https://example.com/list.txt',
+      'sources.needUrl': 'اول آدرس لیست را وارد کن',
+      'sources.needScheme': 'آدرس باید با ‎http://‎ یا ‎https://‎ شروع شود',
+      'sources.added': 'منبع اضافه شد',
+      'cand.lead': 'چیزی که آخرین بازسازی پیدا کرده. هیچ‌کدام سرو نمی‌شوند: استخر فقط وقتی عوض می‌شود که خودت چیزی را منتقل کنی، پس یک بازسازی بد هرگز استخر سالمت را نمی‌برد.',
+      'cand.addSelected': 'افزودن انتخاب‌شده‌ها به استخر', 'cand.discardSelected': 'دور انداختن انتخاب‌شده‌ها',
+      'cand.addAll': 'افزودن همه', 'cand.discardAll': 'دور انداختن همه',
+      'cand.empty': 'چیزی در انتظار نیست. «بازسازی استخر» را بزن تا دنبال کانفیگ بگردد.',
+      'prof.lead': 'پروفایل مجموعه‌ای از مقادیر است که روی کانفیگ‌های انتخابی می‌نشیند — یک آدرس برای جلو انداختن، یک SNI کارآمد، یک fingerprint. هر فیلدی را خالی بگذاری، همان‌طور که بود می‌ماند.',
+      'prof.namePlaceholder': 'نام پروفایل', 'prof.notePlaceholder': 'برای چیست؟ (اختیاری)',
+      'prof.new': 'پروفایل جدید', 'prof.save': 'ذخیره‌ی پروفایل', 'prof.empty': 'هنوز پروفایلی نیست.',
+      'prof.keepEmpty': 'خالی بگذار تا دست نخورد', 'prof.needName': 'برای پروفایل یک نام بگذار',
+      'prof.pickFirst': 'اول یک پروفایل انتخاب کن', 'prof.pickConfigs': 'کانفیگ‌هایی که می‌خواهی رویشان اعمال شود را انتخاب کن',
+      'settings.save': 'ذخیره‌ی تنظیمات', 'settings.reset': 'بازگرداندن همه به مقادیر ‎.env',
+      'editor.title': 'ویرایش کانفیگ', 'editor.alias': 'نام نمایشی (remarks)',
+      'editor.addParam': 'افزودن پارامتر', 'editor.result': 'URI حاصل',
+      'editor.ownKey': 'یا کلید دلخواه خودت را بنویس',
+      'stat.inPool': 'در استخر', 'stat.reachable': 'در دسترس', 'stat.off': 'خاموش‌شده',
+      'stat.manual': 'دستی اضافه‌شده', 'stat.waiting': 'در انتظار انتخاب', 'stat.perSub': 'در هر اشتراک',
+      'toast.saved': 'ذخیره شد', 'toast.deleted': 'حذف شد', 'toast.nothingSelected': 'چیزی انتخاب نشده',
+      'state.active': 'فعال', 'state.off': 'خاموش', 'state.never': 'هرگز',
+      'selected': 'انتخاب‌شده',
+    },
+    ru: {
+      'title': 'Бесплатные конфиги',
+      'subtitle.lead': 'Публичные прокси: собраны, проверены и добавлены в подписки.',
+      'tab.pool': 'Пул', 'tab.candidates': 'Кандидаты', 'tab.groups': 'Группы',
+      'tab.sources': 'Источники', 'tab.profiles': 'Профили', 'tab.settings': 'Настройки',
+      'pool.search': 'Поиск по адресу или URI...', 'pool.allProtocols': 'Все протоколы',
+      'filter.all': 'Все', 'filter.enabled': 'Включённые', 'filter.disabled': 'Выключенные',
+      'filter.manual': 'Добавленные вручную', 'filter.unreachable': 'Недоступные',
+      'action.reload': 'Обновить', 'action.rebuild': 'Пересобрать пул', 'action.add': 'Добавить',
+      'pool.manualPlaceholder': 'Добавить конфиг вручную: vless://... , vmess://... , ss://...',
+      'name.optional': 'Имя (необязательно)',
+      'bulk.enable': 'Включить выбранные', 'bulk.disable': 'Выключить выбранные',
+      'bulk.group': 'Группа:', 'bulk.addToGroup': 'Добавить в группу', 'bulk.removeFromGroup': 'Убрать из группы',
+      'bulk.profile': 'Профиль:', 'bulk.applyProfile': 'Применить профиль...', 'bulk.applyToSelected': 'Применить к выбранным',
+      'col.on': 'Вкл', 'col.protocol': 'Протокол', 'col.address': 'Адрес', 'col.sni': 'SNI / Host',
+      'col.port': 'Порт', 'col.latency': 'Задержка', 'col.state': 'Состояние', 'col.name': 'Имя', 'col.uri': 'URI',
+      'col.url': 'URL', 'col.lastFetch': 'Последняя загрузка', 'col.count': 'Количество', 'col.error': 'Ошибка',
+      'col.note': 'Заметка', 'col.sets': 'Задаёт', 'col.group': 'Группа', 'col.gets': 'Получает',
+      'page.previous': 'Назад', 'page.next': 'Вперёд',
+      'groups.lead': 'Группа работает так же, как для инбаундов: дайте ей конкретные конфиги, и её участники получат именно их.',
+      'groups.receives': 'Получает бесплатные конфиги', 'groups.configsFor': 'Конфиги для',
+      'groups.wholePool': 'Отдать весь пул', 'groups.search': 'Поиск по выбору этой группы...',
+      'action.save': 'Сохранить', 'action.close': 'Закрыть', 'action.cancel': 'Отмена',
+      'sources.b64': 'Тело в base64', 'sources.add': 'Добавить источник', 'sources.addDefaults': 'Добавить источники по умолчанию',
+      'sources.addDefaultsTitle': 'Добавить встроенные публичные списки, которых ещё нет',
+      'sources.urlPlaceholder': 'https://example.com/list.txt',
+      'sources.needUrl': 'Сначала вставьте URL списка',
+      'sources.needScheme': 'URL должен начинаться с http:// или https://',
+      'sources.added': 'Источник добавлен',
+      'cand.lead': 'Что нашла последняя пересборка. Ничего из этого не раздаётся: пул меняется только когда вы сами что-то переносите, поэтому плохая пересборка не может забрать рабочий пул.',
+      'cand.addSelected': 'Добавить выбранные в пул', 'cand.discardSelected': 'Отбросить выбранные',
+      'cand.addAll': 'Добавить все', 'cand.discardAll': 'Отбросить все',
+      'cand.empty': 'Ничего не ждёт. Нажмите «Пересобрать пул», чтобы поискать конфиги.',
+      'prof.lead': 'Профиль — это набор значений, который применяется к выбранным конфигам: адрес для фронтинга, рабочий SNI, отпечаток. Пустое поле остаётся таким, каким было в конфиге.',
+      'prof.namePlaceholder': 'Название профиля', 'prof.notePlaceholder': 'Для чего он? (необязательно)',
+      'prof.new': 'Новый профиль', 'prof.save': 'Сохранить профиль', 'prof.empty': 'Профилей пока нет.',
+      'prof.keepEmpty': 'пусто — оставить как есть', 'prof.needName': 'Дайте профилю название',
+      'prof.pickFirst': 'Сначала выберите профиль', 'prof.pickConfigs': 'Выберите конфиги, к которым его применить',
+      'settings.save': 'Сохранить настройки', 'settings.reset': 'Сбросить всё к значениям из .env',
+      'editor.title': 'Редактирование конфига', 'editor.alias': 'Псевдоним (remarks)',
+      'editor.addParam': 'Добавить параметр', 'editor.result': 'Итоговый URI',
+      'editor.ownKey': 'или введите свой ключ',
+      'stat.inPool': 'В пуле', 'stat.reachable': 'Доступны', 'stat.off': 'Выключены',
+      'stat.manual': 'Добавлены вручную', 'stat.waiting': 'Ждут решения', 'stat.perSub': 'На подписку',
+      'toast.saved': 'Сохранено', 'toast.deleted': 'Удалено', 'toast.nothingSelected': 'Ничего не выбрано',
+      'state.active': 'Активно', 'state.off': 'Выключено', 'state.never': 'никогда',
+      'selected': 'выбрано',
+    },
+    zh: {
+      'title': '免费配置',
+      'subtitle.lead': '采集、检测并追加到订阅中的公共代理。',
+      'tab.pool': '配置池', 'tab.candidates': '候选', 'tab.groups': '分组',
+      'tab.sources': '来源', 'tab.profiles': '模板', 'tab.settings': '设置',
+      'pool.search': '搜索地址或 URI...', 'pool.allProtocols': '全部协议',
+      'filter.all': '全部', 'filter.enabled': '已启用', 'filter.disabled': '已禁用',
+      'filter.manual': '手动添加', 'filter.unreachable': '不可达',
+      'action.reload': '重新加载', 'action.rebuild': '重建配置池', 'action.add': '添加',
+      'pool.manualPlaceholder': '手动添加配置：vless://... , vmess://... , ss://...',
+      'name.optional': '名称（可选）',
+      'bulk.enable': '启用所选', 'bulk.disable': '禁用所选',
+      'bulk.group': '分组：', 'bulk.addToGroup': '加入分组', 'bulk.removeFromGroup': '移出分组',
+      'bulk.profile': '模板：', 'bulk.applyProfile': '应用模板...', 'bulk.applyToSelected': '应用到所选',
+      'col.on': '启用', 'col.protocol': '协议', 'col.address': '地址', 'col.sni': 'SNI / Host',
+      'col.port': '端口', 'col.latency': '延迟', 'col.state': '状态', 'col.name': '名称', 'col.uri': 'URI',
+      'col.url': '网址', 'col.lastFetch': '最近抓取', 'col.count': '数量', 'col.error': '错误',
+      'col.note': '备注', 'col.sets': '设置项', 'col.group': '分组', 'col.gets': '获得',
+      'page.previous': '上一页', 'page.next': '下一页',
+      'groups.lead': '分组的用法和入站一致：把指定的配置给它，成员就只拿到这些。',
+      'groups.receives': '接收免费配置', 'groups.configsFor': '配置：',
+      'groups.wholePool': '给它整个配置池', 'groups.search': '在该分组的选择中搜索...',
+      'action.save': '保存', 'action.close': '关闭', 'action.cancel': '取消',
+      'sources.b64': 'base64 内容', 'sources.add': '添加来源', 'sources.addDefaults': '添加默认来源',
+      'sources.addDefaultsTitle': '添加尚未配置的内置公共列表',
+      'sources.urlPlaceholder': 'https://example.com/list.txt',
+      'sources.needUrl': '请先填写列表网址',
+      'sources.needScheme': '网址必须以 http:// 或 https:// 开头',
+      'sources.added': '来源已添加',
+      'cand.lead': '上次重建找到的内容。这些都还没有被下发：配置池只有在你手动移入时才会改变，所以一次糟糕的重建不会毁掉可用的池。',
+      'cand.addSelected': '将所选加入配置池', 'cand.discardSelected': '丢弃所选',
+      'cand.addAll': '全部加入', 'cand.discardAll': '全部丢弃',
+      'cand.empty': '没有待处理项。点击“重建配置池”去查找配置。',
+      'prof.lead': '模板是一组套用到所选配置上的值：用于前置的地址、可用的 SNI、指纹。留空的字段会保持配置原样。',
+      'prof.namePlaceholder': '模板名称', 'prof.notePlaceholder': '用途说明（可选）',
+      'prof.new': '新建模板', 'prof.save': '保存模板', 'prof.empty': '还没有模板。',
+      'prof.keepEmpty': '留空则保持不变', 'prof.needName': '请为模板取个名称',
+      'prof.pickFirst': '请先选择一个模板', 'prof.pickConfigs': '请选择要应用的配置',
+      'settings.save': '保存设置', 'settings.reset': '全部重置为 .env 的值',
+      'editor.title': '编辑配置', 'editor.alias': '别名（remarks）',
+      'editor.addParam': '添加参数', 'editor.result': '生成的 URI',
+      'editor.ownKey': '或输入自定义键名',
+      'stat.inPool': '池中', 'stat.reachable': '可达', 'stat.off': '已关闭',
+      'stat.manual': '手动添加', 'stat.waiting': '待选择', 'stat.perSub': '每个订阅',
+      'toast.saved': '已保存', 'toast.deleted': '已删除', 'toast.nothingSelected': '未选择任何项',
+      'state.active': '启用中', 'state.off': '已关闭', 'state.never': '从未',
+      'selected': '已选择',
+    },
+  };
+
+  // The English strings live in the markup itself, so the fallback for a missing
+  // key is the key's own English text rather than the key name - a half-finished
+  // translation shows English, never "prof.lead".
+  const EN_FALLBACK = {};
+
+  let LANG = 'en';
+
+  function detectLanguage() {
+    // i18next stores the choice under this key, sometimes quoted or as a region
+    // tag like "fa-IR"; take the first two letters and accept what we know.
+    let raw = '';
+    try { raw = localStorage.getItem('i18nextLng') || localStorage.getItem('lang') || ''; } catch { raw = ''; }
+    raw = String(raw).replace(/"/g, '').trim().toLowerCase();
+    const base = raw.split(/[-_]/)[0];
+    return ['fa', 'ru', 'zh', 'en'].includes(base) ? base : 'en';
+  }
+
+  function t(key) {
+    const table = I18N[LANG] || {};
+    return table[key] || EN_FALLBACK[key] || key;
+  }
+
+  function applyTranslations() {
+    LANG = detectLanguage();
+    document.documentElement.lang = LANG;
+    document.documentElement.dir = LANG === 'fa' ? 'rtl' : 'ltr';
+
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.dataset.i18n;
+      if (!(key in EN_FALLBACK)) EN_FALLBACK[key] = el.textContent.trim();
+      el.textContent = t(key);
+    });
+    document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+      const key = el.dataset.i18nPh;
+      if (!(key in EN_FALLBACK)) EN_FALLBACK[key] = el.getAttribute('placeholder') || '';
+      el.setAttribute('placeholder', t(key));
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+      const key = el.dataset.i18nTitle;
+      if (!(key in EN_FALLBACK)) EN_FALLBACK[key] = el.getAttribute('title') || '';
+      el.setAttribute('title', t(key));
+    });
+  }
+
+  // Seed the English fallbacks from the markup before anything replaces them.
+  applyTranslations();
+
+  // The dashboard writes the new language into localStorage; a storage event
+  // fires in this document because it is the same origin. That is what makes
+  // switching language in the sidebar re-render this page immediately.
+  window.addEventListener('storage', event => {
+    if (event.key && !['i18nextLng', 'lang'].includes(event.key)) return;
+    const before = LANG;
+    applyTranslations();
+    if (before !== LANG) rerenderAll();
+  });
+
   async function loadStatus() {
     const s = await api('/status');
     document.getElementById('stats').innerHTML = [
-      ['In pool', s.pool_total],
-      ['Reachable', s.pool_healthy],
-      ['Switched off', s.pool_disabled],
-      ['Added by hand', s.pool_manual],
-      ['Waiting to choose', s.candidates_waiting || 0],
-      ['Per subscription', (state.settings ? state.settings.effective.max_per_subscription || 'all' : '-')],
+      [t('stat.inPool'), s.pool_total],
+      [t('stat.reachable'), s.pool_healthy],
+      [t('stat.off'), s.pool_disabled],
+      [t('stat.manual'), s.pool_manual],
+      [t('stat.waiting'), s.candidates_waiting || 0],
+      [t('stat.perSub'), (state.settings ? state.settings.effective.max_per_subscription || 'all' : '-')],
     ].map(([k, v]) => `<div class="card"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`).join('');
 
-    const when = s.pool_last_checked_at ? new Date(s.pool_last_checked_at).toLocaleString() : 'never';
+    const when = s.pool_last_checked_at ? new Date(s.pool_last_checked_at).toLocaleString() : t('state.never');
     document.getElementById('subtitle').textContent =
-      `${s.enabled ? 'Active' : 'Switched off'} · mode "${s.mode}" · last checked ${when}` +
+      `${s.enabled ? t('state.active') : t('state.off')} · mode "${s.mode}" · ${when}` +
       (s.running ? ' · a rebuild is running' : '');
     document.getElementById('rebuild').disabled = !!s.running;
 
@@ -444,7 +695,7 @@
       state.protocols = page.protocols;
       const select = document.getElementById('protocol');
       const current = select.value;
-      select.innerHTML = '<option value="">All protocols</option>' +
+      select.innerHTML = '<option value="" data-i18n="pool.allProtocols">All protocols</option>' +
         page.protocols.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
       select.value = current;
     }
@@ -468,7 +719,7 @@
   }
 
   function updateSelectionUI() {
-    document.getElementById('selcount').textContent = state.selected.size + ' selected';
+    document.getElementById('selcount').textContent = state.selected.size + ' ' + t('selected');
     const none = state.selected.size === 0;
     document.getElementById('applyProfile').disabled = none;
     document.getElementById('bulkOn').disabled = none;
@@ -598,7 +849,7 @@
     try {
       await api('/sources/' + e.target.dataset.id, { method: 'PUT', body: JSON.stringify({ is_enabled: e.target.checked }) });
       e.target.closest('tr').classList.toggle('off', !e.target.checked);
-      toast('Saved');
+      toast(t('toast.saved'));
     } catch (err) { toast(err.message); loadSources(); }
   });
 
@@ -607,7 +858,7 @@
     if (!confirm('Delete this source? Its configs stay until the next rebuild.')) return;
     try {
       await api('/sources/' + e.target.dataset.id, { method: 'DELETE' });
-      toast('Deleted');
+      toast(t('toast.deleted'));
       loadSources();
     } catch (err) { toast(err.message); }
   });
@@ -623,9 +874,14 @@
     } catch (err) { toast(err.message); }
   };
 
-  document.getElementById('addSource').onclick = async () => {
+  document.getElementById('addSource').onclick = async (event) => {
     const url = document.getElementById('srcUrl').value.trim();
-    if (!url) return;
+    // Returning silently on an empty field made the button look broken: press
+    // it, nothing happens, no message. Say what is missing instead.
+    if (!url) { toast(t('sources.needUrl')); document.getElementById('srcUrl').focus(); return; }
+    if (!/^https?:\/\//i.test(url)) { toast(t('sources.needScheme')); return; }
+    const button = event.currentTarget;
+    button.disabled = true;
     try {
       await api('/sources', {
         method: 'POST',
@@ -638,9 +894,10 @@
       document.getElementById('srcUrl').value = '';
       document.getElementById('srcRemark').value = '';
       document.getElementById('srcB64').checked = false;
-      toast('Source added');
+      toast(t('sources.added'));
       loadSources();
     } catch (err) { toast(err.message); }
+    finally { button.disabled = false; }
   };
 
   // ---------------------------------------------------------------- settings
@@ -686,7 +943,7 @@
       } else if (type === 'checkbox') {
         control = `<select id="f_${key}">
             <option value="" ${stored === null ? 'selected' : ''}>Default (${fallback ? 'on' : 'off'})</option>
-            <option value="true" ${stored === true ? 'selected' : ''}>On</option>
+            <option value="true" ${stored === true ? 'selected' : ''} data-i18n="col.on">On</option>
             <option value="false" ${stored === false ? 'selected' : ''}>Off</option>
           </select>`;
       } else {
@@ -765,7 +1022,7 @@
       .filter(box => box.checked).map(box => Number(box.dataset.id));
     try {
       await api('/groups', { method: 'PUT', body: JSON.stringify({ group_ids: ids }) });
-      toast('Saved');
+      toast(t('toast.saved'));
       loadGroups();
     } catch (err) { toast(err.message); loadGroups(); }
   });
@@ -975,7 +1232,7 @@
         method: 'PUT',
         body: JSON.stringify(editorValues()),
       });
-      toast('Saved');
+      toast(t('toast.saved'));
       closeEditor();
       await loadPool(); loadStatus();
     } catch (err) {
@@ -1002,7 +1259,7 @@
   function renderCandidates(items) {
     const body = document.getElementById('candRows');
     if (!items.length) {
-      body.innerHTML = `<tr><td colspan="7" class="empty">Nothing waiting. Press "Rebuild pool" to look for configs.</td></tr>`;
+      body.innerHTML = `<tr><td colspan="7" class="empty">${esc(t('cand.empty'))}</td></tr>`;
       return;
     }
     body.innerHTML = items.map(c => `
@@ -1018,7 +1275,7 @@
   }
 
   function updateCandCount() {
-    document.getElementById('candCount').textContent = `${cand.selected.size} selected`;
+    document.getElementById('candCount').textContent = `${cand.selected.size} ${t('selected')}`;
   }
 
   async function loadCandidates() {
@@ -1074,11 +1331,11 @@
   }
 
   document.getElementById('candAdd').onclick = () => {
-    if (!cand.selected.size) return toast('Nothing selected');
+    if (!cand.selected.size) return toast(t('toast.nothingSelected'));
     candAction('/candidates/promote', candSelectionPayload(), r => `${r.promoted} added to the pool`);
   };
   document.getElementById('candDrop').onclick = () => {
-    if (!cand.selected.size) return toast('Nothing selected');
+    if (!cand.selected.size) return toast(t('toast.nothingSelected'));
     candAction('/candidates/discard', candSelectionPayload(), r => `${r.discarded} discarded`);
   };
   document.getElementById('candAddAll').onclick = () => {
@@ -1115,7 +1372,7 @@
   function renderProfiles() {
     const body = document.getElementById('profRows');
     if (!prof.list.length) {
-      body.innerHTML = `<tr><td colspan="4" class="empty">No profiles yet.</td></tr>`;
+      body.innerHTML = `<tr><td colspan="4" class="empty">${esc(t('prof.empty'))}</td></tr>`;
       return;
     }
     body.innerHTML = prof.list.map(p => {
@@ -1135,7 +1392,7 @@
   function fillProfileSelect() {
     const select = document.getElementById('poolProfile');
     const current = select.value;
-    select.innerHTML = '<option value="">Apply profile...</option>' +
+    select.innerHTML = '<option value="">' + esc(t('bulk.applyProfile')) + '</option>' +
       prof.list.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
     select.value = current;
   }
@@ -1151,7 +1408,7 @@
     document.getElementById('profEditorTitle').textContent = profile ? `Editing "${profile.name}"` : '';
     document.getElementById('profFields').innerHTML = PROFILE_FIELDS.map(([key, label]) => `
       <label>${esc(label)}
-        <input data-field="${key}" value="${esc((profile && profile.fields && profile.fields[key]) || '')}" placeholder="leave empty to keep">
+        <input data-field="${key}" value="${esc((profile && profile.fields && profile.fields[key]) || '')}" placeholder="${esc(t('prof.keepEmpty'))}">
       </label>`).join('');
     document.getElementById('profHint').textContent = '';
     document.getElementById('profEditor').hidden = false;
@@ -1163,14 +1420,14 @@
       openProfileEditor(prof.list.find(p => p.id === id));
     } else if (e.target.classList.contains('profdel')) {
       if (!confirm('Delete this profile? Configs it was applied to are not changed back.')) return;
-      try { await api('/profiles/' + id, { method: 'DELETE' }); toast('Deleted'); await loadProfiles(); }
+      try { await api('/profiles/' + id, { method: 'DELETE' }); toast(t('toast.deleted')); await loadProfiles(); }
       catch (err) { toast(err.message); }
     }
   });
 
   document.getElementById('profNew').onclick = async () => {
     const name = document.getElementById('profName').value.trim();
-    if (!name) return toast('Give the profile a name');
+    if (!name) return toast(t('prof.needName'));
     try {
       const created = await api('/profiles', {
         method: 'POST',
@@ -1195,7 +1452,7 @@
     });
     try {
       await api('/profiles/' + prof.editing.id, { method: 'PUT', body: JSON.stringify({ fields }) });
-      toast('Saved');
+      toast(t('toast.saved'));
       await loadProfiles();
       document.getElementById('profEditor').hidden = true;
       prof.editing = null;
@@ -1207,9 +1464,9 @@
 
   document.getElementById('applyProfile').onclick = async () => {
     const profileId = Number(document.getElementById('poolProfile').value);
-    if (!profileId) return toast('Pick a profile first');
+    if (!profileId) return toast(t('prof.pickFirst'));
     const hashes = [...state.selected];
-    if (!hashes.length) return toast('Select the configs to apply it to');
+    if (!hashes.length) return toast(t('prof.pickConfigs'));
     if (!confirm(`Apply this profile to ${hashes.length} config(s)? Their URIs are rewritten.`)) return;
     try {
       const result = await api('/profiles/apply', {
@@ -1224,6 +1481,17 @@
 
   // profiles populate a control on the pool tab, so they are loaded up front
   loadProfiles().catch(() => {});
+
+  // A language switch changes strings that live in rendered rows and counters,
+  // not just in the markup, so the visible tab has to be drawn again.
+  function rerenderAll() {
+    loadStatus().catch(() => {});
+    const active = document.querySelector('.tabs button[aria-selected="true"]');
+    const tab = active ? active.dataset.tab : 'pool';
+    ({ pool: loadPool, candidates: loadCandidates, groups: loadGroups,
+       sources: loadSources, profiles: loadProfiles, settings: loadSettings }[tab] || loadPool)()
+      .catch(() => {});
+  }
 
   // ---------------------------------------------------------------- tabs
 

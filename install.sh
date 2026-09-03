@@ -425,6 +425,22 @@ panel_exec() {
     docker exec -i -w /code "$id" "$@"
 }
 
+# `cli` and `tui` are read by a person, and the panel's CLI colours its output -
+# but only when it can see a terminal. Without -t, docker gives the command a
+# plain pipe, rich decides colour is unwanted and strips it, and the temp key
+# comes out the same grey as everything around it. Every other use of exec here
+# is parsed by this script, where a tty would only add carriage returns.
+panel_exec_tty() {
+    local id
+    id="$(panel_container)"
+    [ -n "$id" ] || die "the panel container is not running - try \`${APP_NAME} logs\`"
+    if [ -t 0 ] && [ -t 1 ]; then
+        docker exec -it -w /code "$id" "$@"
+    else
+        docker exec -i -w /code "$id" "$@"
+    fi
+}
+
 wait_for_panel() {
     # The container accepts exec long before it is useful: start.sh runs the
     # migrations first. So wait for the schema, not for the process.
@@ -839,8 +855,8 @@ main() {
         restart)      require_root; require_installed; compose up -d --force-recreate ;;
         start)        require_root; require_installed; compose up -d ;;
         stop)         require_root; require_installed; compose down ;;
-        cli)          require_installed; panel_exec python /code/nexus-cli.py "${rest[@]+"${rest[@]}"}" ;;
-        tui)          require_installed; panel_exec nexus-tui "${rest[@]+"${rest[@]}"}" ;;
+        cli)          require_installed; panel_exec_tty python /code/nexus-cli.py "${rest[@]+"${rest[@]}"}" ;;
+        tui)          require_installed; panel_exec_tty nexus-tui "${rest[@]+"${rest[@]}"}" ;;
         edit)         require_root; require_installed; "${EDITOR:-nano}" "$COMPOSE_FILE" ;;
         edit-env)     require_root; require_installed; "${EDITOR:-nano}" "$ENV_FILE" ;;
         help|-h|--help) usage ;;

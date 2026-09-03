@@ -6,5 +6,5 @@
 # release.yml), which is what makes every running panel offer the update - the
 # banner reads the Releases API, so a version that is never released is a
 # version nobody is told about.
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 UPSTREAM_VERSION = "5.3.0"

@@ -74,6 +74,11 @@ confirm() {
     [ -e /dev/tty ] || return 1
     local reply
     read -r -p "$1 [y/N] " reply </dev/tty || return 1
+    # Some terminals - web consoles especially - deliver the carriage return
+    # along with the newline, so the answer arrives as $'y\r' and an exact match
+    # against "y" quietly rejects a perfectly good yes. Strip whitespace before
+    # comparing rather than trusting the terminal to be tidy.
+    reply="${reply//[[:space:]]/}"
     case "$reply" in [yY]|[yY][eE][sS]) return 0 ;; *) return 1 ;; esac
 }
 

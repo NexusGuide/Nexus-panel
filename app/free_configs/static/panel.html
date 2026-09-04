@@ -129,7 +129,7 @@
 <body>
 
 <h2 data-i18n="title">Free Configs</h2>
-<div class="sub" id="subtitle">Community proxies harvested, checked, and appended to subscriptions.</div>
+<div class="sub" id="subtitle" data-i18n="subtitle.lead">Community proxies harvested, checked, and appended to subscriptions.</div>
 
 <div class="sub" id="lastrun" hidden></div>
 
@@ -149,11 +149,11 @@
     <input class="grow" id="q" type="search" placeholder="Search address or URI..." data-i18n-ph="pool.search">
     <select id="protocol"><option value="" data-i18n="pool.allProtocols">All protocols</option></select>
     <select id="status">
-      <option value="all">All</option>
-      <option value="enabled">Enabled</option>
-      <option value="disabled">Disabled</option>
-      <option value="manual">Manual</option>
-      <option value="unhealthy">Unreachable</option>
+      <option value="all" data-i18n="filter.all">All</option>
+      <option value="enabled" data-i18n="filter.enabled">Enabled</option>
+      <option value="disabled" data-i18n="filter.disabled">Disabled</option>
+      <option value="manual" data-i18n="filter.manual">Manual</option>
+      <option value="unhealthy" data-i18n="filter.unreachable">Unreachable</option>
     </select>
     <button id="refreshPool" data-i18n="action.reload">Reload</button>
     <button id="rebuild" class="primary" data-i18n="action.rebuild">Rebuild pool</button>
@@ -166,7 +166,7 @@
   </div>
 
   <div class="row" id="bulkbar" style="margin-bottom:10px">
-    <span class="muted" id="selcount">0 selected</span>
+    <span class="muted" id="selcount"><span data-i18n="selected.none">0 selected</span></span>
     <button id="bulkOn" disabled data-i18n="bulk.enable">Enable selected</button>
     <button id="bulkOff" disabled data-i18n="bulk.disable">Disable selected</button>
     <span class="muted" style="margin-inline-start:8px" data-i18n="bulk.group">Group:</span>
@@ -174,7 +174,7 @@
     <button id="bulkAssign" disabled data-i18n="bulk.addToGroup">Add to group</button>
     <button id="bulkUnassign" disabled data-i18n="bulk.removeFromGroup">Remove from group</button>
     <span class="muted" style="margin-inline-start:8px" data-i18n="bulk.profile">Profile:</span>
-    <select id="poolProfile" style="min-width:150px"><option value="">Apply profile...</option></select>
+    <select id="poolProfile" style="min-width:150px"><option value="" data-i18n="bulk.applyProfile">Apply profile...</option></select>
     <button id="applyProfile" disabled data-i18n="bulk.applyToSelected">Apply to selected</button>
     <button id="bulkDelete" disabled class="danger" data-i18n="bulk.delete">Delete selected</button>
   </div>
@@ -197,10 +197,10 @@
 </section>
 
 <section id="tab-groups" hidden>
-  <p class="hint" style="margin-bottom:10px">
+  <p class="hint" style="margin-bottom:10px" data-i18n="groups.lead">
     A group works like it does for inbounds: give it specific configs and its members get
     exactly those. A group that receives free configs but has none picked gets the whole
-    pool &mdash; which is what it did before this existed.
+    pool - which is what it did before this existed.
   </p>
   <div class="wrap">
     <table>
@@ -210,7 +210,7 @@
   </div>
 
   <div id="groupEditor" hidden>
-    <div class="section">Configs for <span id="geName"></span></div>
+    <div class="section"><span data-i18n="groups.configsFor">Configs for</span> <span id="geName"></span></div>
     <div class="row" style="margin-bottom:8px">
       <input class="grow" id="geSearch" type="search" placeholder="Search this group's choices..." data-i18n-ph="groups.search">
       <span class="muted" id="geCount"></span>
@@ -231,7 +231,7 @@
   <div class="row" style="margin-bottom:10px">
     <input class="grow" id="srcUrl" placeholder="https://example.com/list.txt" data-i18n-ph="sources.urlPlaceholder">
     <input id="srcRemark" placeholder="Name (optional)" data-i18n-ph="name.optional" style="width:170px">
-    <label class="row" style="gap:5px"><input type="checkbox" id="srcB64"> base64 body</label>
+    <label class="row" style="gap:5px"><input type="checkbox" id="srcB64"> <span data-i18n="sources.b64">base64 body</span></label>
     <button id="addSource" class="primary" data-i18n="sources.add">Add source</button>
   </div>
   <div class="wrap">
@@ -243,7 +243,7 @@
 </section>
 
 <section id="tab-candidates" hidden>
-  <p class="hint" style="margin-bottom:10px">
+  <p class="hint" style="margin-bottom:10px" data-i18n="cand.lead">
     What the last rebuild found. Nothing here is being served: the pool changes only when you
     move something across, so a bad rebuild can never take a working pool away from you.
   </p>
@@ -253,7 +253,7 @@
     <button id="candReload" data-i18n="action.reload">Reload</button>
   </div>
   <div class="row" style="margin-bottom:10px">
-    <span id="candCount" class="muted">0 selected</span>
+    <span id="candCount" class="muted"><span data-i18n="selected.none">0 selected</span></span>
     <button id="candAdd" class="primary" data-i18n="cand.addSelected">Add selected to pool</button>
     <button id="candDrop" data-i18n="cand.discardSelected">Discard selected</button>
     <span style="flex:1"></span>
@@ -337,13 +337,13 @@
       <div class="frow"><label for="edAddress" data-i18n="col.address">Address</label><input id="edAddress"><span></span></div>
       <div class="frow"><label for="edPort" data-i18n="col.port">Port</label><input id="edPort" type="number" min="1" max="65535"><span></span></div>
       <div id="edFields"></div>
-      <div class="section">Add a parameter</div>
+      <div class="section" data-i18n="editor.addParam">Add a parameter</div>
       <div class="row">
         <select id="edAdd" class="grow"></select>
         <input id="edAddCustom" placeholder="or type a key of your own" data-i18n-ph="editor.ownKey" style="width:210px">
         <button id="edAddBtn" data-i18n="action.add">Add</button>
       </div>
-      <div class="section">Resulting URI</div>
+      <div class="section" data-i18n="editor.result">Resulting URI</div>
       <textarea id="uriPreview" readonly></textarea>
     </div>
     <footer>
@@ -505,6 +505,24 @@
       'run.noSources': 'No sources are switched on, so there was nothing to fetch. Add one on the Sources tab.',
       'run.finished': 'Rebuild finished',
       'run.stillRunning': 'The rebuild is still going after ten minutes. Check the panel logs.',
+      'state.mode': 'mode', 'state.rebuilding': 'a rebuild is running',
+      'group.nothing': 'nothing',
+      'pill.manual': 'manual', 'pill.reachable': 'reachable', 'pill.noAnswer': 'no answer',
+      'toast.renamed': 'Renamed', 'toast.added': 'Added', 'toast.overrideCleared': 'Override cleared',
+      'bulk.enabled': '{n} enabled', 'bulk.disabled': '{n} disabled',
+      'bulk.needGroup': 'Pick a group first',
+      'search.noMatch': 'Nothing matches.',
+      'sources.confirmDelete': 'Delete this source? Its configs stay until the next rebuild.',
+      'group.empty': 'No groups in the panel yet.', 'group.none': 'no groups yet',
+      'group.choose': 'Choose configs', 'group.chosen': '{n} chosen',
+      'group.wholePool': 'the whole pool',
+      'group.noneChosen': 'none chosen - this group gets the whole pool',
+      'group.nowWholePool': 'This group now gets the whole pool',
+      'cand.confirmAddAll': 'Add all {n} candidates to the pool?',
+      'cand.confirmDropAll': 'Discard all {n} candidates?',
+      'editor.paramExists': 'That parameter is already there',
+      'editor.pickParam': 'Choose a parameter...',
+      'editor.noSuggestions': 'Nothing left to suggest',
       'col.groups': 'Groups', 'bulk.delete': 'Delete selected',
       'action.reset': 'Reset',
       'pool.empty': 'Nothing here yet. Add a source, rebuild the pool, then add candidates.',
@@ -586,7 +604,6 @@
       'prof.keepEmpty': 'خالی بگذار تا دست نخورد', 'prof.needName': 'برای پروفایل یک نام بگذار',
       'prof.pickFirst': 'اول یک پروفایل انتخاب کن', 'prof.pickConfigs': 'کانفیگ‌هایی که می‌خواهی رویشان اعمال شود را انتخاب کن',
       'prof.protoLead': 'هر پروفایل برای یک پروتکل نوشته می‌شود. پروتکل‌ها واژگان مشترک ندارند — در vmess نام ترنسپورت «net» است و «type» یعنی نوع هدر — پس پروفایل فقط روی کانفیگ‌های پروتکل خودش اعمال می‌شود و بقیه‌ی انتخاب دست‌نخورده می‌ماند.',
-      'col.protocol': 'پروتکل',
       'prof.pickProtocol': 'پروتکل...',
       'prof.needProtocol': 'انتخاب کن این پروفایل برای کدام پروتکل است',
       'prof.noProtocol': 'تعیین‌نشده',
@@ -610,6 +627,27 @@
       'run.noSources': 'هیچ منبعی روشن نیست، پس چیزی برای گرفتن نبود. از تب منابع یکی اضافه کن.',
       'run.finished': 'بازسازی تمام شد',
       'run.stillRunning': 'بازسازی بعد از ده دقیقه هنوز تمام نشده. لاگ پنل را ببین.',
+      'state.mode': 'حالت', 'state.rebuilding': 'یک بازسازی در جریان است',
+      'group.nothing': 'هیچ',
+      'selected.none': '۰ انتخاب‌شده',
+      'editor.addParam': 'افزودن پارامتر',
+      'pill.manual': 'دستی', 'pill.reachable': 'در دسترس', 'pill.noAnswer': 'بدون پاسخ',
+      'toast.renamed': 'نام تغییر کرد', 'toast.added': 'اضافه شد',
+      'toast.overrideCleared': 'تنظیم دستی پاک شد',
+      'bulk.enabled': '{n} روشن شد', 'bulk.disabled': '{n} خاموش شد',
+      'bulk.needGroup': 'اول یک گروه انتخاب کن',
+      'search.noMatch': 'چیزی پیدا نشد.',
+      'sources.confirmDelete': 'این منبع حذف شود؟ کانفیگ‌هایش تا بازسازی بعدی می‌مانند.',
+      'group.empty': 'هنوز گروهی در پنل نیست.', 'group.none': 'هنوز گروهی نیست',
+      'group.choose': 'انتخاب کانفیگ‌ها', 'group.chosen': '{n} انتخاب‌شده',
+      'group.wholePool': 'کل استخر',
+      'group.noneChosen': 'چیزی انتخاب نشده — این گروه کل استخر را می‌گیرد',
+      'group.nowWholePool': 'این گروه حالا کل استخر را می‌گیرد',
+      'cand.confirmAddAll': 'همه‌ی {n} کاندیدا به استخر اضافه شوند؟',
+      'cand.confirmDropAll': 'همه‌ی {n} کاندیدا دور انداخته شوند؟',
+      'editor.paramExists': 'این پارامتر از قبل هست',
+      'editor.pickParam': 'یک پارامتر انتخاب کن...',
+      'editor.noSuggestions': 'پیشنهاد دیگری نمانده',
       'col.groups': 'گروه‌ها', 'bulk.delete': 'حذف انتخاب‌شده‌ها',
       'action.reset': 'بازنشانی',
       'pool.empty': 'هنوز چیزی اینجا نیست. یک منبع اضافه کن، استخر را بازسازی کن، بعد از کاندیداها انتخاب کن.',
@@ -660,7 +698,7 @@
       'field.aid': 'AlterId', 'field.scy': 'رمزنگاری (scy)',
       'settings.save': 'ذخیره‌ی تنظیمات', 'settings.reset': 'بازگرداندن همه به مقادیر ‎.env',
       'editor.title': 'ویرایش کانفیگ', 'editor.alias': 'نام نمایشی (remarks)',
-      'editor.addParam': 'افزودن پارامتر', 'editor.result': 'URI حاصل',
+      'editor.result': 'URI حاصل',
       'editor.ownKey': 'یا کلید دلخواه خودت را بنویس',
       'stat.inPool': 'در استخر', 'stat.reachable': 'در دسترس', 'stat.off': 'خاموش‌شده',
       'stat.manual': 'دستی اضافه‌شده', 'stat.waiting': 'در انتظار انتخاب', 'stat.perSub': 'در هر اشتراک',
@@ -707,7 +745,6 @@
       'prof.keepEmpty': 'пусто — оставить как есть', 'prof.needName': 'Дайте профилю название',
       'prof.pickFirst': 'Сначала выберите профиль', 'prof.pickConfigs': 'Выберите конфиги, к которым его применить',
       'prof.protoLead': 'Профиль пишется под один протокол. У протоколов разные имена полей — в vmess транспорт называется "net", а "type" означает тип заголовка — поэтому профиль применяется только к конфигам своего протокола, остальные остаются как были.',
-      'col.protocol': 'Протокол',
       'prof.pickProtocol': 'Протокол...',
       'prof.needProtocol': 'Выберите, для какого протокола этот профиль',
       'prof.noProtocol': 'не задан',
@@ -731,6 +768,27 @@
       'run.noSources': 'Ни один источник не включён, загружать было нечего. Добавьте его во вкладке «Источники».',
       'run.finished': 'Перестройка завершена',
       'run.stillRunning': 'Перестройка идёт уже десять минут. Посмотрите логи панели.',
+      'state.mode': 'режим', 'state.rebuilding': 'идёт перестройка',
+      'group.nothing': 'ничего',
+      'selected.none': 'выбрано: 0',
+      'editor.addParam': 'Добавить параметр',
+      'pill.manual': 'вручную', 'pill.reachable': 'доступен', 'pill.noAnswer': 'нет ответа',
+      'toast.renamed': 'Переименовано', 'toast.added': 'Добавлено',
+      'toast.overrideCleared': 'Решение сброшено',
+      'bulk.enabled': 'включено: {n}', 'bulk.disabled': 'выключено: {n}',
+      'bulk.needGroup': 'Сначала выберите группу',
+      'search.noMatch': 'Ничего не найдено.',
+      'sources.confirmDelete': 'Удалить этот источник? Его конфиги останутся до следующей перестройки.',
+      'group.empty': 'В панели ещё нет групп.', 'group.none': 'групп пока нет',
+      'group.choose': 'Выбрать конфиги', 'group.chosen': 'выбрано: {n}',
+      'group.wholePool': 'весь пул',
+      'group.noneChosen': 'ничего не выбрано — эта группа получает весь пул',
+      'group.nowWholePool': 'Теперь эта группа получает весь пул',
+      'cand.confirmAddAll': 'Добавить все {n} кандидатов в пул?',
+      'cand.confirmDropAll': 'Отбросить всех {n} кандидатов?',
+      'editor.paramExists': 'Такой параметр уже есть',
+      'editor.pickParam': 'Выберите параметр...',
+      'editor.noSuggestions': 'Больше нечего предложить',
       'col.groups': 'Группы', 'bulk.delete': 'Удалить выбранные',
       'action.reset': 'Сбросить',
       'pool.empty': 'Здесь пока пусто. Добавьте источник, перестройте пул и выберите из кандидатов.',
@@ -781,7 +839,7 @@
       'field.aid': 'AlterId', 'field.scy': 'Шифрование (scy)',
       'settings.save': 'Сохранить настройки', 'settings.reset': 'Сбросить всё к значениям из .env',
       'editor.title': 'Редактирование конфига', 'editor.alias': 'Псевдоним (remarks)',
-      'editor.addParam': 'Добавить параметр', 'editor.result': 'Итоговый URI',
+      'editor.result': 'Итоговый URI',
       'editor.ownKey': 'или введите свой ключ',
       'stat.inPool': 'В пуле', 'stat.reachable': 'Доступны', 'stat.off': 'Выключены',
       'stat.manual': 'Добавлены вручную', 'stat.waiting': 'Ждут решения', 'stat.perSub': 'На подписку',
@@ -828,7 +886,6 @@
       'prof.keepEmpty': '留空则保持不变', 'prof.needName': '请为模板取个名称',
       'prof.pickFirst': '请先选择一个模板', 'prof.pickConfigs': '请选择要应用的配置',
       'prof.protoLead': '每个模板只针对一种协议。各协议的字段名并不通用 —— vmess 中传输方式叫 "net"，而 "type" 表示伪装类型 —— 所以模板只会应用到同协议的配置，其余保持不变。',
-      'col.protocol': '协议',
       'prof.pickProtocol': '协议...',
       'prof.needProtocol': '请选择该模板适用的协议',
       'prof.noProtocol': '未设置',
@@ -852,6 +909,27 @@
       'run.noSources': '没有启用任何订阅源，所以没有内容可抓取。请到「订阅源」标签页添加。',
       'run.finished': '重建完成',
       'run.stillRunning': '重建已经进行十分钟仍未结束，请查看面板日志。',
+      'state.mode': '模式', 'state.rebuilding': '正在重建',
+      'group.nothing': '无',
+      'selected.none': '已选 0 项',
+      'editor.addParam': '添加参数',
+      'pill.manual': '手动', 'pill.reachable': '可达', 'pill.noAnswer': '无响应',
+      'toast.renamed': '已重命名', 'toast.added': '已添加',
+      'toast.overrideCleared': '已清除该决定',
+      'bulk.enabled': '已启用 {n} 条', 'bulk.disabled': '已停用 {n} 条',
+      'bulk.needGroup': '请先选择一个分组',
+      'search.noMatch': '没有匹配的内容。',
+      'sources.confirmDelete': '删除此订阅源？它抓取的配置会保留到下次重建。',
+      'group.empty': '面板中还没有分组。', 'group.none': '还没有分组',
+      'group.choose': '选择配置', 'group.chosen': '已选 {n} 条',
+      'group.wholePool': '整个池',
+      'group.noneChosen': '未选择任何配置 —— 该分组将获得整个池',
+      'group.nowWholePool': '该分组现在将获得整个池',
+      'cand.confirmAddAll': '把全部 {n} 条候选加入池？',
+      'cand.confirmDropAll': '丢弃全部 {n} 条候选？',
+      'editor.paramExists': '该参数已经存在',
+      'editor.pickParam': '请选择一个参数...',
+      'editor.noSuggestions': '没有更多可建议的了',
       'col.groups': '分组', 'bulk.delete': '删除所选',
       'action.reset': '重置',
       'pool.empty': '这里还没有内容。先添加订阅源，重建池，再从候选中挑选。',
@@ -902,7 +980,7 @@
       'field.aid': 'AlterId', 'field.scy': '加密 (scy)',
       'settings.save': '保存设置', 'settings.reset': '全部重置为 .env 的值',
       'editor.title': '编辑配置', 'editor.alias': '别名（remarks）',
-      'editor.addParam': '添加参数', 'editor.result': '生成的 URI',
+      'editor.result': '生成的 URI',
       'editor.ownKey': '或输入自定义键名',
       'stat.inPool': '池中', 'stat.reachable': '可达', 'stat.off': '已关闭',
       'stat.manual': '手动添加', 'stat.waiting': '待选择', 'stat.perSub': '每个订阅',
@@ -989,8 +1067,8 @@
 
     const when = s.pool_last_checked_at ? new Date(s.pool_last_checked_at).toLocaleString() : t('state.never');
     document.getElementById('subtitle').textContent =
-      `${s.enabled ? t('state.active') : t('state.off')} · mode "${s.mode}" · ${when}` +
-      (s.running ? ' · a rebuild is running' : '');
+      `${s.enabled ? t('state.active') : t('state.off')} · ${t('state.mode')} "${s.mode}" · ${when}` +
+      (s.running ? ' · ' + t('state.rebuilding') : '');
     document.getElementById('rebuild').disabled = !!s.running;
 
     // the tab badge is the only nudge that a rebuild produced something to look at
@@ -1053,8 +1131,9 @@
         <td>${esc(c.port)}</td>
         <td>${c.latency_ms == null ? '<span class="muted">-</span>' : esc(c.latency_ms) + ' ms'}</td>
         <td>
-          ${c.is_manual ? '<span class="pill man">manual</span> ' : ''}
-          ${c.is_healthy ? '<span class="pill ok">reachable</span>' : '<span class="pill bad">no answer</span>'}
+          ${c.is_manual ? `<span class="pill man">${esc(t('pill.manual'))}</span> ` : ''}
+          ${c.is_healthy ? `<span class="pill ok">${esc(t('pill.reachable'))}</span>`
+                         : `<span class="pill bad">${esc(t('pill.noAnswer'))}</span>`}
         </td>
         <td>${groupNames(c.group_ids)}</td>
         <td class="namecell"><input class="rename" data-hash="${esc(c.uri_hash)}" value="${esc(c.remark || '')}" placeholder="-" style="width:130px"></td>
@@ -1085,7 +1164,7 @@
       state.protocols = page.protocols;
       const select = document.getElementById('protocol');
       const current = select.value;
-      select.innerHTML = '<option value="" data-i18n="pool.allProtocols">All protocols</option>' +
+      select.innerHTML = `<option value="">${esc(t('pool.allProtocols'))}</option>` +
         page.protocols.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
       select.value = current;
     }
@@ -1133,7 +1212,7 @@
         loadStatus();
       } else if (e.target.classList.contains('rename')) {
         await api('/configs/' + hash, { method: 'PUT', body: JSON.stringify({ remark: e.target.value }) });
-        toast('Renamed');
+        toast(t('toast.renamed'));
       }
     } catch (err) { toast(err.message); loadPool(); }
   });
@@ -1170,7 +1249,7 @@
     if (!e.target.classList.contains('del')) return;
     try {
       await api('/configs/' + e.target.dataset.hash, { method: 'DELETE' });
-      toast('Override cleared');
+      toast(t('toast.overrideCleared'));
       await loadPool(); loadStatus();
     } catch (err) { toast(err.message); }
   });
@@ -1189,7 +1268,7 @@
         method: 'POST',
         body: JSON.stringify({ uri_hashes: [...state.selected], is_enabled: isEnabled }),
       });
-      toast(`${state.selected.size} config(s) ${isEnabled ? 'enabled' : 'disabled'}`);
+      toast(t(isEnabled ? 'bulk.enabled' : 'bulk.disabled').replace('{n}', state.selected.size));
       clearSelection();
       await loadPool(); loadStatus();
     } catch (err) { toast(err.message); }
@@ -1207,7 +1286,7 @@
       });
       document.getElementById('manualUri').value = '';
       document.getElementById('manualRemark').value = '';
-      toast('Added');
+      toast(t('toast.added'));
       await loadPool(); loadStatus();
     } catch (err) { toast(err.message); }
   };
@@ -1282,10 +1361,10 @@
         <td><input type="checkbox" class="srctog" data-id="${s.id}" ${s.is_enabled ? 'checked' : ''}></td>
         <td>${esc(s.remark || '-')}</td>
         <td class="uri" title="${esc(s.url)}">${esc(s.url)}</td>
-        <td>${s.last_fetch_at ? esc(new Date(s.last_fetch_at).toLocaleString()) : '<span class="muted">never</span>'}</td>
+        <td>${s.last_fetch_at ? esc(new Date(s.last_fetch_at).toLocaleString()) : `<span class="muted">${esc(t('state.never'))}</span>`}</td>
         <td>${esc(s.last_fetch_count)}</td>
         <td class="uri" title="${esc(s.last_error || '')}">${s.last_error ? `<span class="pill bad">${esc(s.last_error)}</span>` : '<span class="muted">-</span>'}</td>
-        <td class="actions"><button class="srcdel" data-id="${s.id}">Delete</button></td>
+        <td class="actions"><button class="srcdel" data-id="${s.id}">${esc(t('action.delete'))}</button></td>
       </tr>`).join('');
   }
 
@@ -1300,7 +1379,7 @@
 
   document.getElementById('srcRows').addEventListener('click', async e => {
     if (!e.target.classList.contains('srcdel')) return;
-    if (!confirm('Delete this source? Its configs stay until the next rebuild.')) return;
+    if (!confirm(t('sources.confirmDelete'))) return;
     try {
       await api('/sources/' + e.target.dataset.id, { method: 'DELETE' });
       toast(t('toast.deleted'));
@@ -1437,12 +1516,12 @@
     const current = select.value;
     select.innerHTML = groups.length
       ? groups.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join('')
-      : '<option value="">no groups yet</option>';
+      : `<option value="">${esc(t('group.none'))}</option>`;
     select.value = current || (groups[0] ? String(groups[0].id) : '');
 
     const body = document.getElementById('groupRows');
     if (!groups.length) {
-      body.innerHTML = `<tr><td colspan="4" class="empty">No groups in the panel yet.</td></tr>`;
+      body.innerHTML = `<tr><td colspan="4" class="empty">${esc(t('group.empty'))}</td></tr>`;
       return;
     }
     body.innerHTML = groups.map(g => `
@@ -1450,11 +1529,11 @@
         <td><input type="checkbox" class="gaccess" data-id="${g.id}" ${g.receives_free_configs ? 'checked' : ''}></td>
         <td>${esc(g.name)}</td>
         <td>${!g.receives_free_configs
-              ? '<span class="muted">nothing</span>'
+              ? `<span class="muted">${esc(t('group.nothing'))}</span>`
               : g.gets_whole_pool
-                ? '<span class="pill">the whole pool</span>'
-                : `<span class="pill ok">${g.assigned_count} chosen</span>`}</td>
-        <td class="actions"><button class="gpick" data-id="${g.id}" data-name="${esc(g.name)}">Choose configs</button></td>
+                ? `<span class="pill">${esc(t('group.wholePool'))}</span>`
+                : `<span class="pill ok">${esc(t('group.chosen').replace('{n}', g.assigned_count))}</span>`}</td>
+        <td class="actions"><button class="gpick" data-id="${g.id}" data-name="${esc(g.name)}">${esc(t('group.choose'))}</button></td>
       </tr>`).join('');
   }
 
@@ -1498,9 +1577,9 @@
         <td>${esc(c.address)}</td>
         <td>${sniOf(c.uri) ? esc(sniOf(c.uri)) : '<span class="muted">-</span>'}</td>
         <td>${esc(c.remark || '')}</td>
-      </tr>`).join('') : `<tr><td colspan="5" class="empty">Nothing matches.</td></tr>`;
+      </tr>`).join('') : `<tr><td colspan="5" class="empty">${esc(t('search.noMatch'))}</td></tr>`;
     document.getElementById('geCount').textContent = groupEditing.chosen.size
-      ? `${groupEditing.chosen.size} chosen` : 'none chosen - this group gets the whole pool';
+      ? t('group.chosen').replace('{n}', groupEditing.chosen.size) : t('group.noneChosen');
   }
 
   document.getElementById('geRows').addEventListener('change', e => {
@@ -1508,7 +1587,7 @@
     e.target.checked ? groupEditing.chosen.add(e.target.dataset.hash)
                      : groupEditing.chosen.delete(e.target.dataset.hash);
     document.getElementById('geCount').textContent = groupEditing.chosen.size
-      ? `${groupEditing.chosen.size} chosen` : 'none chosen - this group gets the whole pool';
+      ? t('group.chosen').replace('{n}', groupEditing.chosen.size) : t('group.noneChosen');
   });
 
   document.getElementById('geSearch').addEventListener('input', () => renderGroupChoices());
@@ -1525,7 +1604,7 @@
       await api('/groups/' + groupEditing.id + '/configs', {
         method: 'PUT', body: JSON.stringify({ uri_hashes: [...groupEditing.chosen] }),
       });
-      toast(groupEditing.chosen.size ? 'Saved' : 'This group now gets the whole pool');
+      toast(groupEditing.chosen.size ? t('toast.saved') : t('group.nowWholePool'));
       document.getElementById('groupEditor').hidden = true;
       groupEditing = null;
       loadGroups();
@@ -1534,7 +1613,7 @@
 
   async function bulkGroup(action) {
     const groupId = document.getElementById('bulkGroup').value;
-    if (!groupId) { toast('No group selected'); return; }
+    if (!groupId) { toast(t('bulk.needGroup')); return; }
     try {
       const result = await api('/groups/' + groupId + '/configs', {
         method: 'POST',
@@ -1629,9 +1708,9 @@
       document.getElementById('edFields').innerHTML = form.fields.map(paramRow).join('');
       const add = document.getElementById('edAdd');
       add.innerHTML = form.suggested.length
-        ? '<option value="">Choose a parameter...</option>' +
+        ? `<option value="">${esc(t('editor.pickParam'))}</option>` +
           form.suggested.map(f => `<option value="${esc(f.key)}">${esc(f.label)}</option>`).join('')
-        : '<option value="">Nothing left to suggest</option>';
+        : `<option value="">${esc(t('editor.noSuggestions'))}</option>`;
       document.getElementById('edHint').textContent = '';
       document.getElementById('overlay').classList.add('show');
       refreshPreview();
@@ -1666,7 +1745,7 @@
     const key = custom || document.getElementById('edAdd').value;
     if (!key) return;
     if (document.querySelector(`#edFields [data-param="${CSS.escape(key)}"]`)) {
-      toast('That parameter is already there');
+      toast(t('editor.paramExists'));
       return;
     }
     const known = editing.suggested.find(f => f.key === key);
@@ -1791,11 +1870,11 @@
     candAction('/candidates/discard', candSelectionPayload(), r => `${r.discarded} discarded`);
   };
   document.getElementById('candAddAll').onclick = () => {
-    if (!confirm(`Add all ${cand.total} candidates to the pool?`)) return;
+    if (!confirm(t('cand.confirmAddAll').replace('{n}', cand.total))) return;
     candAction('/candidates/promote', { uri_hashes: [] }, r => `${r.promoted} added to the pool`);
   };
   document.getElementById('candDropAll').onclick = () => {
-    if (!confirm(`Discard all ${cand.total} candidates?`)) return;
+    if (!confirm(t('cand.confirmDropAll').replace('{n}', cand.total))) return;
     candAction('/candidates/discard', { uri_hashes: [] }, r => `${r.discarded} discarded`);
   };
 

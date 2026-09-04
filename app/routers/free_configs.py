@@ -302,6 +302,21 @@ async def bulk_update_configs(
     return {"changed": changed}
 
 
+@router.post("/configs/recheck")
+async def recheck_configs(
+    payload: CandidateSelection,
+    _: AdminDetails = Depends(require_owner),
+):
+    """Check reachability again for configs already in the pool.
+
+    A rebuild only checks what it has just fetched, so a config's health is
+    frozen at the moment it entered the pool. This is how an owner asks the
+    question again - for a selection, or for the whole pool when the list is
+    empty.
+    """
+    return await service.recheck_configs(payload.uri_hashes)
+
+
 @router.post("/configs/delete")
 async def delete_configs(
     payload: CandidateSelection,
@@ -711,6 +726,7 @@ async def apply_profile(
 
     configs = await crud.get_configs_by_hashes(db, payload.uri_hashes)
     applied = skipped = wrong_protocol = 0
+    rewritten: list[str] = []
     for config in configs:
         if (config.protocol or "").strip().lower() != protocol:
             wrong_protocol += 1
@@ -756,8 +772,25 @@ async def apply_profile(
         # In place. A profile changes the configs the owner selected; it does
         # not switch them off and add edited copies beside them, which is what
         # turned twenty configs into forty rows.
-        await crud.rewrite_config_in_place(db, config.uri_hash, parsed)
+        new_hash = await crud.rewrite_config_in_place(db, config.uri_hash, parsed)
+        rewritten.append(new_hash)
         applied += 1
 
     await service.invalidate_pool_cache()
-    return {"applied": applied, "skipped": skipped, "wrong_protocol": wrong_protocol}
+
+    # Changing an address moves the config to a server nobody has tried yet, so
+    # its old health reading was cleared. Left there it would read as
+    # unreachable for ever and quietly drop out of every subscription - which is
+    # the opposite of what applying a working CDN address is for. So the ones
+    # that moved are checked now.
+    health = {}
+    if rewritten:
+        health = await service.recheck_configs(rewritten)
+
+    return {
+        "applied": applied,
+        "skipped": skipped,
+        "wrong_protocol": wrong_protocol,
+        "rechecked": health.get("checked", 0),
+        "reachable": health.get("reachable", 0),
+    }

@@ -501,6 +501,37 @@ async def get_configs_by_hashes(db: AsyncSession, uri_hashes: list[str]) -> list
     return rows
 
 
+async def record_health(db: AsyncSession, results) -> tuple[int, int]:
+    """Write the outcome of a reachability check back onto pool configs.
+
+    Returns (reachable, unreachable).
+
+    Health is per endpoint, not per config: several configs commonly share one
+    address and port, and the checker probes each endpoint once. So results are
+    keyed that way and applied to every config sitting on that endpoint.
+    """
+    now = dt.now(UTC)
+    by_endpoint: dict[tuple[str, int], int | None] = {}
+    for result in results:
+        by_endpoint[(result.config.address, result.config.port)] = result.latency_ms if result.is_healthy else None
+
+    reachable = unreachable = 0
+    for (address, port), latency in by_endpoint.items():
+        healthy = latency is not None
+        await db.execute(
+            update(FreeConfig)
+            .where(FreeConfig.address == address)
+            .where(FreeConfig.port == port)
+            .values(is_healthy=healthy, latency_ms=latency, last_checked_at=now)
+        )
+        if healthy:
+            reachable += 1
+        else:
+            unreachable += 1
+    await db.commit()
+    return reachable, unreachable
+
+
 async def get_config_by_hash(db: AsyncSession, uri_hash: str) -> FreeConfig | None:
     return (await db.execute(select(FreeConfig).where(FreeConfig.uri_hash == uri_hash))).scalar_one_or_none()
 

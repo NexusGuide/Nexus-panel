@@ -69,7 +69,7 @@ A rebuild no longer replaces the pool. What it finds goes into the **Candidates*
 6. On a subscription request, eligible users get the fastest `MAX_PER_SUBSCRIPTION` of
    them appended.
 
-### Two honest limitations
+### Three honest limitations
 
 - **"Healthy" means the port answered a TCP connect from your panel's server.** It does
   not prove the proxy protocol works, and it does not prove the endpoint is reachable
@@ -78,6 +78,13 @@ A rebuild no longer replaces the pool. What it finds goes into the **Candidates*
   behind Cloudflare answers on 443 whether or not its proxy is alive — so treat the
   latency ordering, not the healthy flag, as the useful signal. Real verification would
   mean speaking each protocol with xray-core; that is not implemented here.
+- **A config's health is measured once, when it enters the pool.** A rebuild checks
+  what it has just fetched; nothing checks the pool again on its own. So a server that
+  died last week still reads as reachable, and a config that has no reading at all -
+  one added by hand, or one whose address a profile changed - reads as unreachable and
+  is left out of every subscription until it is checked. **Re-check health** on the Pool
+  tab asks the question again, for a selection or for everything; applying a profile
+  re-checks whatever it moved to a new address.
 - **Only the `links` and `links_base64` subscription formats get free configs.** Clash,
   sing-box, Xray, Outline and WireGuard describe outbounds field by field and cannot
   carry a foreign URI verbatim. This is the same limitation upstream's own

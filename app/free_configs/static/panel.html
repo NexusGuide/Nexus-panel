@@ -157,6 +157,7 @@
     </select>
     <button id="refreshPool" data-i18n="action.reload">Reload</button>
     <button id="rebuild" class="primary" data-i18n="action.rebuild">Rebuild pool</button>
+    <button id="recheck" title="Check reachability again - nothing else does, so a config's health is otherwise frozen at the moment it entered the pool" data-i18n-title="pool.recheckWhy" data-i18n="action.recheck">Re-check health</button>
   </div>
 
   <div class="row" style="margin-bottom:10px">
@@ -507,6 +508,13 @@
       'run.stillRunning': 'The rebuild is still going after ten minutes. Check the panel logs.',
       'state.mode': 'mode', 'state.rebuilding': 'a rebuild is running',
       'group.nothing': 'nothing',
+      'action.recheck': 'Re-check health',
+      'pool.recheckWhy': 'Check reachability again. Nothing else does, so a config keeps whatever result it had when it entered the pool - and one whose address changed, or that was added by hand, has none.',
+      'pool.rechecking': 'Checking {n} config(s)...',
+      'pool.recheckingAll': 'Checking the whole pool - this takes a moment',
+      'pool.confirmRecheckAll': 'Nothing is selected, so this checks every config in the pool. Go ahead?',
+      'pool.rechecked': 'Checked {n}: {ok} reachable, {bad} not',
+      'prof.rechecked': '{n} of them reachable at the new address',
       'group.served': 'only {n} served',
       'group.gapWhy': 'The rest are assigned but not delivered: switched off, or the last health check could not reach them. Filter the pool by Disabled or Unreachable to see which.',
       'pill.manual': 'manual', 'pill.reachable': 'reachable', 'pill.noAnswer': 'no answer',
@@ -631,6 +639,13 @@
       'run.stillRunning': 'بازسازی بعد از ده دقیقه هنوز تمام نشده. لاگ پنل را ببین.',
       'state.mode': 'حالت', 'state.rebuilding': 'یک بازسازی در جریان است',
       'group.nothing': 'هیچ',
+      'action.recheck': 'بررسی مجدد سلامت',
+      'pool.recheckWhy': 'دوباره بررسی می‌کند در دسترس هست یا نه. هیچ‌چیز دیگری این کار را نمی‌کند، پس هر کانفیگ همان نتیجه‌ای را نگه می‌دارد که موقع ورود به استخر داشت — و کانفیگی که آدرسش عوض شده یا دستی اضافه شده، اصلاً نتیجه‌ای ندارد.',
+      'pool.rechecking': 'در حال بررسی {n} کانفیگ...',
+      'pool.recheckingAll': 'در حال بررسی کل استخر — کمی طول می‌کشد',
+      'pool.confirmRecheckAll': 'چیزی انتخاب نشده، پس همه‌ی کانفیگ‌های استخر بررسی می‌شوند. ادامه بدهم؟',
+      'pool.rechecked': '{n} بررسی شد: {ok} در دسترس، {bad} نه',
+      'prof.rechecked': '{n} تای آن‌ها روی آدرس جدید در دسترس‌اند',
       'group.served': 'فقط {n} ارائه می‌شود',
       'group.gapWhy': 'بقیه اختصاص داده شده‌اند ولی تحویل نمی‌شوند: یا خاموش‌اند یا آخرین بررسی سلامت به آن‌ها نرسیده. استخر را با فیلتر «خاموش» یا «در دسترس نیست» ببین تا معلوم شود کدام‌ها.',
       'selected.none': '۰ انتخاب‌شده',
@@ -774,6 +789,13 @@
       'run.stillRunning': 'Перестройка идёт уже десять минут. Посмотрите логи панели.',
       'state.mode': 'режим', 'state.rebuilding': 'идёт перестройка',
       'group.nothing': 'ничего',
+      'action.recheck': 'Проверить доступность',
+      'pool.recheckWhy': 'Проверить доступность заново. Больше этого не делает ничто, поэтому конфиг сохраняет результат, полученный при попадании в пул, — а у того, чей адрес изменили или который добавлен вручную, результата нет вовсе.',
+      'pool.rechecking': 'Проверяется конфигов: {n}...',
+      'pool.recheckingAll': 'Проверяется весь пул — это займёт время',
+      'pool.confirmRecheckAll': 'Ничего не выбрано, поэтому будут проверены все конфиги пула. Продолжить?',
+      'pool.rechecked': 'Проверено {n}: доступны {ok}, недоступны {bad}',
+      'prof.rechecked': 'из них доступны по новому адресу: {n}',
       'group.served': 'выдаётся только {n}',
       'group.gapWhy': 'Остальные назначены, но не выдаются: выключены, либо последняя проверка до них не достучалась. Отфильтруйте пул по «Выключенные» или «Недоступные», чтобы увидеть какие.',
       'selected.none': 'выбрано: 0',
@@ -917,6 +939,13 @@
       'run.stillRunning': '重建已经进行十分钟仍未结束，请查看面板日志。',
       'state.mode': '模式', 'state.rebuilding': '正在重建',
       'group.nothing': '无',
+      'action.recheck': '重新检测可达性',
+      'pool.recheckWhy': '再检测一次是否可达。没有别的机制会做这件事，所以配置会一直保留它进入池时的结果 —— 而被改过地址的、或手动添加的，根本没有结果。',
+      'pool.rechecking': '正在检测 {n} 条配置...',
+      'pool.recheckingAll': '正在检测整个池 —— 需要一点时间',
+      'pool.confirmRecheckAll': '没有选中任何配置，将检测池中全部配置。继续？',
+      'pool.rechecked': '已检测 {n} 条：{ok} 条可达，{bad} 条不可达',
+      'prof.rechecked': '其中 {n} 条在新地址上可达',
       'group.served': '实际只下发 {n} 条',
       'group.gapWhy': '其余的已分配但不会下发：要么被停用，要么上次健康检测无法连通。用「已停用」或「不可达」筛选池即可看到是哪些。',
       'selected.none': '已选 0 项',
@@ -1237,6 +1266,28 @@
   }
 
   document.getElementById('bulkDelete').onclick = () => deleteFromPool([...state.selected]);
+
+  // Health is only ever measured when a config is harvested. Nothing measures
+  // it again, so a config whose address a profile changed - or one added by
+  // hand - stays "no answer" for ever and silently drops out of every
+  // subscription. This is how that question gets asked a second time.
+  document.getElementById('recheck').onclick = async () => {
+    const button = document.getElementById('recheck');
+    const hashes = [...state.selected];
+    const whole = hashes.length === 0;
+    if (whole && !confirm(t('pool.confirmRecheckAll'))) return;
+    button.disabled = true;
+    toast(whole ? t('pool.recheckingAll') : t('pool.rechecking').replace('{n}', hashes.length));
+    try {
+      const result = await api('/configs/recheck', { method: 'POST', body: JSON.stringify({ uri_hashes: hashes }) });
+      toast(t('pool.rechecked')
+        .replace('{n}', result.checked)
+        .replace('{ok}', result.reachable)
+        .replace('{bad}', result.unreachable));
+      await Promise.all([loadPool(), loadStatus()]);
+    } catch (err) { toast(err.message); }
+    finally { button.disabled = false; }
+  };
 
   document.getElementById('rows').addEventListener('click', async e => {
     if (e.target.classList.contains('edit')) {
@@ -2066,6 +2117,9 @@
       const parts = [t('prof.applied').replace('{n}', result.applied)];
       if (result.wrong_protocol) parts.push(t('prof.wrongProtocol').replace('{n}', result.wrong_protocol));
       if (result.skipped) parts.push(t('prof.skipped').replace('{n}', result.skipped));
+      // moving a config to a new address clears its health, so the ones that
+      // moved were checked again straight away - say what came back
+      if (result.rechecked) parts.push(t('prof.rechecked').replace('{n}', result.reachable));
       toast(result.detail || parts.join(', '));
       clearSelection();
       await loadPool();

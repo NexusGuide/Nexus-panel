@@ -135,6 +135,41 @@ async def refresh_pool() -> dict:
             _last_refresh["running"] = False
 
 
+async def recheck_configs(uri_hashes: list[str]) -> dict:
+    """Re-run the reachability check over configs already in the pool.
+
+    Nothing else does this. A refresh only checks what it has just fetched, so
+    once a config is in the pool its health is frozen at the moment it was
+    promoted - and two things then make that reading wrong. A config whose
+    address a profile changed had its result cleared, because the old one
+    described a different server, and stayed unreachable for ever after; a hand-
+    added config never had a result at all. Both are then filtered out of every
+    subscription, which is how a group can be assigned eighty-three configs and
+    deliver twelve.
+
+    The other direction is just as stale and quieter: a server that died last
+    week still reads as reachable, because nobody asked again.
+
+    An empty list means the whole pool.
+    """
+    async with GetDB() as db:
+        configs = await crud.get_configs_by_hashes(db, uri_hashes)
+        if not configs:
+            return {"checked": 0, "reachable": 0, "unreachable": 0}
+
+        # Only distinct endpoints are probed; the result is fanned back out to
+        # every config that shares one.
+        results: list[HealthResult] = []
+        async for batch in iter_checked_batches(configs, force=True):
+            results.extend(batch)
+
+        reachable, unreachable = await crud.record_health(db, results)
+
+    await _clear_pool_cache()
+    _clear_group_cache()
+    return {"checked": len(configs), "reachable": reachable, "unreachable": unreachable}
+
+
 def last_refresh_info() -> dict:
     return {
         "running": _last_refresh["running"],

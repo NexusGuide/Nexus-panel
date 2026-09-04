@@ -116,16 +116,21 @@ async def check_config(config: ParsedConfig, semaphore: asyncio.Semaphore) -> He
     return HealthResult(config=config, is_healthy=latency is not None, latency_ms=latency)
 
 
-async def iter_checked_batches(configs: list[ParsedConfig], batch_size: int = 500):
+async def iter_checked_batches(configs: list[ParsedConfig], batch_size: int = 500, force: bool = False):
     """Health-check configs in bounded batches, yielding each batch's results.
 
     One giant ``asyncio.gather`` over every config allocates a coroutine, a task
     and a result object per entry up front - with tens of thousands of configs
     that is enough to get the process OOM-killed. Batching keeps the number of
     live objects flat regardless of pool size.
+
+    ``configs`` needs only ``address`` and ``port``, so pool rows can be passed
+    as readily as freshly parsed ones.
     """
     settings = await get_settings()
-    if not settings.health_check:
+    # force is for a check the owner asked for by name. The setting decides
+    # whether a rebuild checks on its own; it should not veto a button press.
+    if not settings.health_check and not force:
         # health checking disabled: keep everything, mark unknown latency
         for start in range(0, len(configs), batch_size):
             yield [HealthResult(config=config, is_healthy=True) for config in configs[start : start + batch_size]]

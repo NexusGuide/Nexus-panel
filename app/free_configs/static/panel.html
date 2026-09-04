@@ -507,6 +507,8 @@
       'run.stillRunning': 'The rebuild is still going after ten minutes. Check the panel logs.',
       'state.mode': 'mode', 'state.rebuilding': 'a rebuild is running',
       'group.nothing': 'nothing',
+      'group.served': 'only {n} served',
+      'group.gapWhy': 'The rest are assigned but not delivered: switched off, or the last health check could not reach them. Filter the pool by Disabled or Unreachable to see which.',
       'pill.manual': 'manual', 'pill.reachable': 'reachable', 'pill.noAnswer': 'no answer',
       'toast.renamed': 'Renamed', 'toast.added': 'Added', 'toast.overrideCleared': 'Override cleared',
       'bulk.enabled': '{n} enabled', 'bulk.disabled': '{n} disabled',
@@ -629,6 +631,8 @@
       'run.stillRunning': 'بازسازی بعد از ده دقیقه هنوز تمام نشده. لاگ پنل را ببین.',
       'state.mode': 'حالت', 'state.rebuilding': 'یک بازسازی در جریان است',
       'group.nothing': 'هیچ',
+      'group.served': 'فقط {n} ارائه می‌شود',
+      'group.gapWhy': 'بقیه اختصاص داده شده‌اند ولی تحویل نمی‌شوند: یا خاموش‌اند یا آخرین بررسی سلامت به آن‌ها نرسیده. استخر را با فیلتر «خاموش» یا «در دسترس نیست» ببین تا معلوم شود کدام‌ها.',
       'selected.none': '۰ انتخاب‌شده',
       'editor.addParam': 'افزودن پارامتر',
       'pill.manual': 'دستی', 'pill.reachable': 'در دسترس', 'pill.noAnswer': 'بدون پاسخ',
@@ -770,6 +774,8 @@
       'run.stillRunning': 'Перестройка идёт уже десять минут. Посмотрите логи панели.',
       'state.mode': 'режим', 'state.rebuilding': 'идёт перестройка',
       'group.nothing': 'ничего',
+      'group.served': 'выдаётся только {n}',
+      'group.gapWhy': 'Остальные назначены, но не выдаются: выключены, либо последняя проверка до них не достучалась. Отфильтруйте пул по «Выключенные» или «Недоступные», чтобы увидеть какие.',
       'selected.none': 'выбрано: 0',
       'editor.addParam': 'Добавить параметр',
       'pill.manual': 'вручную', 'pill.reachable': 'доступен', 'pill.noAnswer': 'нет ответа',
@@ -911,6 +917,8 @@
       'run.stillRunning': '重建已经进行十分钟仍未结束，请查看面板日志。',
       'state.mode': '模式', 'state.rebuilding': '正在重建',
       'group.nothing': '无',
+      'group.served': '实际只下发 {n} 条',
+      'group.gapWhy': '其余的已分配但不会下发：要么被停用，要么上次健康检测无法连通。用「已停用」或「不可达」筛选池即可看到是哪些。',
       'selected.none': '已选 0 项',
       'editor.addParam': '添加参数',
       'pill.manual': '手动', 'pill.reachable': '可达', 'pill.noAnswer': '无响应',
@@ -1508,6 +1516,19 @@
 
   let groupEditing = null;   // { id, name, chosen:Set, items:[] }
 
+  // Assigned and served are different numbers, and the gap is the useful part:
+  // a config can be assigned to a group and still reach nobody because it was
+  // switched off or the last check could not reach it. Showing only the first
+  // is what let a group claim eighty-three and deliver twelve.
+  function groupCount(group) {
+    const assigned = group.assigned_count || 0;
+    const served = group.served_count === undefined ? assigned : group.served_count;
+    const chosen = `<span class="pill ok">${esc(t('group.chosen').replace('{n}', assigned))}</span>`;
+    if (served === assigned) return chosen;
+    return chosen + ` <span class="pill bad" title="${esc(t('group.gapWhy'))}">` +
+      esc(t('group.served').replace('{n}', served)) + '</span>';
+  }
+
   async function loadGroups() {
     const groups = await api('/groups/summary');
     state.groups = groups;
@@ -1532,7 +1553,7 @@
               ? `<span class="muted">${esc(t('group.nothing'))}</span>`
               : g.gets_whole_pool
                 ? `<span class="pill">${esc(t('group.wholePool'))}</span>`
-                : `<span class="pill ok">${esc(t('group.chosen').replace('{n}', g.assigned_count))}</span>`}</td>
+                : groupCount(g)}</td>
         <td class="actions"><button class="gpick" data-id="${g.id}" data-name="${esc(g.name)}">${esc(t('group.choose'))}</button></td>
       </tr>`).join('');
   }

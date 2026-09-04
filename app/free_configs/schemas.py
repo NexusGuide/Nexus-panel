@@ -225,6 +225,10 @@ class GroupSummary(BaseModel):
     name: str
     receives_free_configs: bool = False
     assigned_count: int = 0
+    # how many of those a subscription would actually carry: assigned is not
+    # the same as served, and showing only the first is how a group can promise
+    # eighty-three configs and deliver twelve
+    served_count: int = 0
     gets_whole_pool: bool = False
 
 

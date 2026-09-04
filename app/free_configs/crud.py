@@ -830,10 +830,58 @@ async def get_group_assignments(db: AsyncSession, group_id: int) -> list[str]:
     return list((await db.execute(stmt)).scalars().all())
 
 
-async def get_assignment_counts(db: AsyncSession) -> dict[int, int]:
-    """How many configs each group has been given, for the panel's group list."""
-    stmt = select(FreeConfigGroupConfig.group_id, func.count()).group_by(FreeConfigGroupConfig.group_id)
-    return {group_id: count for group_id, count in (await db.execute(stmt)).all()}
+async def purge_dangling_assignments(db: AsyncSession) -> int:
+    """Drop assignments pointing at configs that are no longer in the pool.
+
+    An assignment is a hash, and a hash outlives the config it names. Three
+    things used to leave one behind: a profile that stored an edited copy under
+    a new hash and switched the original off, a config removed from the pool
+    before removal cleaned up after itself, and a rebuild that never re-found a
+    harvested entry. None of them are reachable any more, but the rows they left
+    are still counted, which is why a group could claim eighty-three configs and
+    serve twelve.
+    """
+    result = await db.execute(
+        delete(FreeConfigGroupConfig).where(
+            ~exists().where(FreeConfig.uri_hash == FreeConfigGroupConfig.uri_hash)
+        )
+    )
+    await db.commit()
+    return result.rowcount or 0
+
+
+async def get_assignment_counts(db: AsyncSession) -> dict[int, dict[str, int]]:
+    """Per group: how many configs are assigned, and how many will be served.
+
+    They are not the same number, and showing only the first is how the panel
+    promised eighty-three and delivered twelve. A config is assigned but not
+    served when the owner switched it off, or when the last health check could
+    not reach it - so the difference is a real thing the owner can act on
+    rather than an accounting error to hide.
+
+    Only assignments that still resolve to a config in the pool are counted;
+    the ones that do not are removed by purge_dangling_assignments.
+    """
+    assigned = select(FreeConfigGroupConfig.group_id, func.count()).join(
+        FreeConfig, FreeConfig.uri_hash == FreeConfigGroupConfig.uri_hash
+    ).group_by(FreeConfigGroupConfig.group_id)
+
+    # the same filter the subscription path applies, so the number is what a
+    # user would actually receive
+    served = (
+        select(FreeConfigGroupConfig.group_id, func.count())
+        .join(FreeConfig, FreeConfig.uri_hash == FreeConfigGroupConfig.uri_hash)
+        .where(FreeConfig.is_enabled.is_(True))
+        .where(or_(FreeConfig.is_healthy.is_(True), FreeConfig.is_manual.is_(True)))
+        .group_by(FreeConfigGroupConfig.group_id)
+    )
+
+    counts: dict[int, dict[str, int]] = {}
+    for group_id, count in (await db.execute(assigned)).all():
+        counts[group_id] = {"assigned": count, "served": 0}
+    for group_id, count in (await db.execute(served)).all():
+        counts.setdefault(group_id, {"assigned": count, "served": 0})["served"] = count
+    return counts
 
 
 async def set_group_assignments(db: AsyncSession, group_id: int, uri_hashes: list[str]) -> int:

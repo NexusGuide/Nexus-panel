@@ -416,16 +416,20 @@ async def trigger_refresh(_: AdminDetails = Depends(require_owner)):
 async def list_group_summaries(db: AsyncSession = Depends(get_db), _: AdminDetails = Depends(require_owner)):
     """Every panel group, whether it receives free configs, and how many it has."""
     opted_in = set(await crud.get_enabled_group_ids(db))
+    # Assignments to configs that have since left the pool are still rows, and
+    # still counted, so they are cleared before anything is counted.
+    await crud.purge_dangling_assignments(db)
     counts = await crud.get_assignment_counts(db)
     return [
         GroupSummary(
             id=group_id,
             name=name,
             receives_free_configs=group_id in opted_in,
-            assigned_count=counts.get(group_id, 0),
+            assigned_count=counts.get(group_id, {}).get("assigned", 0),
+            served_count=counts.get(group_id, {}).get("served", 0),
             # an opted-in group with no explicit list gets everything, which is
             # what "opted in" meant before assignment existed
-            gets_whole_pool=group_id in opted_in and counts.get(group_id, 0) == 0,
+            gets_whole_pool=group_id in opted_in and counts.get(group_id, {}).get("assigned", 0) == 0,
         )
         for group_id, name in await crud.list_groups(db)
     ]

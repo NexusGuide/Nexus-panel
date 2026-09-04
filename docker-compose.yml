@@ -1,8 +1,13 @@
+# For running the panel by hand during development.
+#
+# This is not what an install uses: `nexus install` writes its own compose file
+# into /opt/nexus, with the database service and healthchecks the chosen backend
+# needs. This one is the short version for a laptop.
 services:
-  pasarguard:
-    image: pasarguard/panel:latest
+  panel:
+    image: ghcr.io/nexusguide/nexus-panel:latest
     restart: always
     env_file: .env
     network_mode: host
     volumes:
-      - /var/lib/pasarguard:/var/lib/pasarguard
+      - /var/lib/nexus:/var/lib/nexus

@@ -1,12 +1,14 @@
 # Builds this fork's image and publishes it to GHCR, so install.sh can just
 # pull it instead of making every user build from source.
 #
-# Why a separate workflow instead of editing build.yml:
-#   - build.yml pushes to Docker Hub and needs DOCKERHUB_USERNAME/DOCKERHUB_TOKEN,
-#     which a fork does not have. This one uses GHCR only, which authenticates
-#     with the built-in GITHUB_TOKEN - no secrets to configure.
-#   - build.yml only runs on a published release. This also runs on every push
-#     to main, so `:latest` tracks the branch and there is always an image.
+# This replaced upstream's build.yml, which this fork no longer carries:
+#   - build.yml pushed to Docker Hub as `pasarguard/<repo>` and needed
+#     DOCKERHUB_USERNAME/DOCKERHUB_TOKEN, which this fork neither has nor should
+#     use - publishing this panel under their name would be wrong even if it
+#     worked. This one uses GHCR, which authenticates with the built-in
+#     GITHUB_TOKEN, so there are no secrets to configure.
+#   - build.yml only ran on a published release. This runs on every push to
+#     main, so `:latest` tracks the branch and there is always an image.
 #   - it compiles the dashboard with bun in a separate job and passes the result
 #     to the image build; this one lets the Dockerfile do it in its own stage,
 #     so a plain `docker build` off a clone produces the same complete panel.

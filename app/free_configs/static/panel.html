@@ -233,7 +233,6 @@
     <input id="srcRemark" placeholder="Name (optional)" data-i18n-ph="name.optional" style="width:170px">
     <label class="row" style="gap:5px"><input type="checkbox" id="srcB64"> base64 body</label>
     <button id="addSource" class="primary" data-i18n="sources.add">Add source</button>
-    <button id="addDefaults" title="Add the built-in community lists that are not configured yet" data-i18n-title="sources.addDefaultsTitle" data-i18n="sources.addDefaults">Add default sources</button>
   </div>
   <div class="wrap">
     <table>
@@ -474,6 +473,7 @@
       // Only the strings that live in JavaScript rather than in the markup.
       // Everything with a data-i18n attribute takes its English from the page.
       'sources.needUrl': 'Paste the URL of a list first',
+      'sources.empty': 'No sources yet. Paste the URL of a public list above and press Add source.',
       'sources.needScheme': 'The URL must start with http:// or https://',
       'sources.added': 'Source added',
       'cand.empty': 'Nothing waiting. Press "Rebuild pool" to look for configs.',
@@ -570,8 +570,8 @@
       'groups.receives': 'کانفیگ رایگان می‌گیرد', 'groups.configsFor': 'کانفیگ‌های',
       'groups.wholePool': 'کل استخر را بده', 'groups.search': 'جست‌وجو در انتخاب‌های این گروه...',
       'action.save': 'ذخیره', 'action.close': 'بستن', 'action.cancel': 'انصراف',
-      'sources.b64': 'بدنه base64', 'sources.add': 'افزودن منبع', 'sources.addDefaults': 'افزودن منابع پیش‌فرض',
-      'sources.addDefaultsTitle': 'افزودن لیست‌های عمومی داخلی که هنوز تنظیم نشده‌اند',
+      'sources.b64': 'بدنه base64', 'sources.add': 'افزودن منبع',
+      'sources.empty': 'هنوز منبعی نیست. آدرس یک لیست عمومی را بالا وارد کن و «افزودن منبع» را بزن.',
       'sources.urlPlaceholder': 'https://example.com/list.txt',
       'sources.needUrl': 'اول آدرس لیست را وارد کن',
       'sources.needScheme': 'آدرس باید با ‎http://‎ یا ‎https://‎ شروع شود',
@@ -691,8 +691,8 @@
       'groups.receives': 'Получает бесплатные конфиги', 'groups.configsFor': 'Конфиги для',
       'groups.wholePool': 'Отдать весь пул', 'groups.search': 'Поиск по выбору этой группы...',
       'action.save': 'Сохранить', 'action.close': 'Закрыть', 'action.cancel': 'Отмена',
-      'sources.b64': 'Тело в base64', 'sources.add': 'Добавить источник', 'sources.addDefaults': 'Добавить источники по умолчанию',
-      'sources.addDefaultsTitle': 'Добавить встроенные публичные списки, которых ещё нет',
+      'sources.b64': 'Тело в base64', 'sources.add': 'Добавить источник',
+      'sources.empty': 'Источников пока нет. Вставьте выше адрес публичного списка и нажмите «Добавить источник».',
       'sources.urlPlaceholder': 'https://example.com/list.txt',
       'sources.needUrl': 'Сначала вставьте URL списка',
       'sources.needScheme': 'URL должен начинаться с http:// или https://',
@@ -812,8 +812,8 @@
       'groups.receives': '接收免费配置', 'groups.configsFor': '配置：',
       'groups.wholePool': '给它整个配置池', 'groups.search': '在该分组的选择中搜索...',
       'action.save': '保存', 'action.close': '关闭', 'action.cancel': '取消',
-      'sources.b64': 'base64 内容', 'sources.add': '添加来源', 'sources.addDefaults': '添加默认来源',
-      'sources.addDefaultsTitle': '添加尚未配置的内置公共列表',
+      'sources.b64': 'base64 内容', 'sources.add': '添加来源',
+      'sources.empty': '还没有订阅源。在上方粘贴公共列表的地址，然后点击「添加来源」。',
       'sources.urlPlaceholder': 'https://example.com/list.txt',
       'sources.needUrl': '请先填写列表网址',
       'sources.needScheme': '网址必须以 http:// 或 https:// 开头',
@@ -1274,7 +1274,7 @@
     const sources = await api('/sources');
     const body = document.getElementById('srcRows');
     if (!sources.length) {
-      body.innerHTML = `<tr><td colspan="7" class="empty">No sources yet - add one above, or press "Add default sources".</td></tr>`;
+      body.innerHTML = `<tr><td colspan="7" class="empty">${esc(t('sources.empty'))}</td></tr>`;
       return;
     }
     body.innerHTML = sources.map(s => `
@@ -1307,17 +1307,6 @@
       loadSources();
     } catch (err) { toast(err.message); }
   });
-
-  document.getElementById('addDefaults').onclick = async () => {
-    // idempotent on the server: only the missing ones are created
-    try {
-      const result = await api('/sources/defaults', { method: 'POST' });
-      toast(result.added
-        ? `${result.added} of ${result.total} added - run a refresh to build the pool`
-        : 'All default sources are already configured');
-      loadSources();
-    } catch (err) { toast(err.message); }
-  };
 
   document.getElementById('addSource').onclick = async (event) => {
     const url = document.getElementById('srcUrl').value.trim();

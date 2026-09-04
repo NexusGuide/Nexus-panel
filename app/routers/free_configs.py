@@ -15,7 +15,6 @@ from fastapi.responses import HTMLResponse
 
 from app.db import AsyncSession, get_db
 from app.free_configs import crud, service, settings as settings_module
-from app.free_configs.defaults import DEFAULT_SOURCES
 from app.free_configs.fields import (
     ConfigFieldsError,
     as_form,
@@ -100,23 +99,6 @@ async def free_configs_panel():
 async def list_sources(db: AsyncSession = Depends(get_db), _: AdminDetails = Depends(require_owner)):
     """List configured free-config sources."""
     return await crud.get_sources(db)
-
-
-@router.post("/sources/defaults")
-async def add_default_sources(db: AsyncSession = Depends(get_db), _: AdminDetails = Depends(require_owner)):
-    """Add whichever of the built-in community lists are not configured yet.
-
-    Sources are content, not installation state, so the installer no longer
-    seeds them - this is how a fresh panel gets a starting list, and it is
-    idempotent: re-running it adds nothing and removes nothing.
-    """
-    added = 0
-    for url, is_base64, remark in DEFAULT_SOURCES:
-        if await crud.get_source_by_url(db, url):
-            continue
-        await crud.create_source(db, url=url, remark=remark, is_base64=is_base64)
-        added += 1
-    return {"added": added, "total": len(DEFAULT_SOURCES)}
 
 
 @router.post("/sources", response_model=FreeConfigSourceResponse, status_code=status.HTTP_201_CREATED)
@@ -767,7 +749,10 @@ async def apply_profile(
             continue
         if parsed.uri_hash == config.uri_hash:
             continue
-        await crud.replace_with_edited(db, config.uri_hash, parsed, remark=alias or None)
+        # In place. A profile changes the configs the owner selected; it does
+        # not switch them off and add edited copies beside them, which is what
+        # turned twenty configs into forty rows.
+        await crud.rewrite_config_in_place(db, config.uri_hash, parsed)
         applied += 1
 
     await service.invalidate_pool_cache()

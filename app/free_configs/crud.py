@@ -634,6 +634,102 @@ async def clear_override(db: AsyncSession, uri_hash: str) -> bool:
     return True
 
 
+async def rewrite_config_in_place(db: AsyncSession, old_hash: str, config) -> str:
+    """Change a config's settings without turning it into a second config.
+
+    A config is identified by the hash of its URI, so changing an SNI or an
+    address changes its identity - and the first version of this stored the
+    result as a *new* manual entry and switched the original off. Applying a
+    profile to twenty configs therefore produced forty rows: twenty switched
+    off and twenty copies. That is not what "apply these settings" means to
+    anyone; the owner asked for their configs to be changed, not duplicated.
+
+    So the row is updated where it stands, and everything keyed to its old hash
+    is carried across with it - the override that holds its name and its on/off
+    state, and its group memberships. Nothing is left behind to switch off, and
+    nothing new appears in the list.
+
+    Returns the hash the config now has.
+
+    Two cases need care:
+
+      * the edit is a no-op, and the hash has not changed - then there is
+        nothing to move;
+      * the edit lands on a config already in the pool, which happens when two
+        entries differ only in what the profile just overwrote. Then this row is
+        deleted rather than duplicated, and its group memberships are merged
+        into the surviving one.
+    """
+    if config.uri_hash == old_hash:
+        return old_hash
+
+    collision = (
+        await db.execute(select(FreeConfig.id).where(FreeConfig.uri_hash == config.uri_hash))
+    ).scalar_one_or_none()
+
+    groups = list(
+        (
+            await db.execute(
+                select(FreeConfigGroupConfig.group_id).where(FreeConfigGroupConfig.uri_hash == old_hash)
+            )
+        ).scalars().all()
+    )
+
+    if collision is not None:
+        # The edit made this config identical to one already in the pool. Keep
+        # one of them and move this one's group memberships onto it.
+        already = set(
+            (
+                await db.execute(
+                    select(FreeConfigGroupConfig.group_id).where(
+                        FreeConfigGroupConfig.uri_hash == config.uri_hash
+                    )
+                )
+            ).scalars().all()
+        )
+        for group_id in groups:
+            if group_id not in already:
+                db.add(FreeConfigGroupConfig(group_id=group_id, uri_hash=config.uri_hash))
+        await db.execute(delete(FreeConfigGroupConfig).where(FreeConfigGroupConfig.uri_hash == old_hash))
+        await db.execute(delete(FreeConfigOverride).where(FreeConfigOverride.uri_hash == old_hash))
+        await db.execute(delete(FreeConfig).where(FreeConfig.uri_hash == old_hash))
+        await db.commit()
+        return config.uri_hash
+
+    row = (await db.execute(select(FreeConfig).where(FreeConfig.uri_hash == old_hash))).scalar_one_or_none()
+    if row is None:
+        return old_hash
+
+    moved_endpoint = (row.address, row.port) != (config.address, config.port)
+    row.uri = config.uri
+    row.uri_hash = config.uri_hash
+    row.protocol = config.protocol
+    row.address = config.address
+    row.port = config.port
+    if moved_endpoint:
+        # A different host or port has not been reached yet, and claiming the
+        # old result would be a lie. Changing only an SNI leaves the endpoint
+        # alone, so its last check still stands.
+        row.is_healthy = False
+        row.latency_ms = None
+        row.last_checked_at = None
+
+    # Carry the owner's decisions with the config rather than stranding them on
+    # a hash nothing points at any more.
+    await db.execute(
+        update(FreeConfigOverride)
+        .where(FreeConfigOverride.uri_hash == old_hash)
+        .values(uri_hash=config.uri_hash, uri=config.uri if row.is_manual else None)
+    )
+    await db.execute(
+        update(FreeConfigGroupConfig)
+        .where(FreeConfigGroupConfig.uri_hash == old_hash)
+        .values(uri_hash=config.uri_hash)
+    )
+    await db.commit()
+    return config.uri_hash
+
+
 async def replace_with_edited(db: AsyncSession, old_hash: str, config, remark: str | None = None) -> FreeConfig:
     """Swap a config for an edited version of itself.
 

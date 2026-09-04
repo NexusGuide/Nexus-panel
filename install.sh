@@ -291,7 +291,7 @@ EOF
 # --- free configs ---------------------------------------------------------
 # Community proxy lists are harvested, TCP health-checked, and appended to the
 # subscription output of eligible users. The lists themselves are managed in the
-# panel: Free Configs -> Sources -> "Add default sources".
+# panel: Free Configs -> Sources -> paste a list URL -> "Add source".
 FREE_CONFIGS_ENABLED=${FREE_CONFIGS_ENABLED}
 FREE_CONFIGS_MODE=all
 FREE_CONFIGS_REFRESH_INTERVAL=86400
@@ -773,7 +773,7 @@ ${GREEN}${BOLD}Done.${RESET} ${BRAND} is installed and running.
 
 ${BOLD}Next${RESET}
   ${BOLD}${APP_NAME} cli generate-temp-key${RESET}    a one-time key to create the owner account
-  then in the panel: Free Configs -> Sources -> "Add default sources" -> refresh
+  then in the panel: Free Configs -> Sources -> add a list URL -> rebuild the pool
 
 ${BOLD}Commands${RESET}
   ${APP_NAME} apply | logs | status | restart | cli | tui | backup | restore | uninstall

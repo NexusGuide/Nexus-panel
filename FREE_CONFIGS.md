@@ -185,35 +185,24 @@ FREE_CONFIGS_REFRESH_INTERVAL = 86400
 
 ### 3. Add sources
 
-In the panel, open **Free Configs → Sources** and press **Add default sources**. It adds
-whichever of the built-in community lists are not configured yet, and is safe to press
-twice — it never duplicates or removes anything. Then press refresh to build the pool.
+In the panel, open **Free Configs → Sources**, paste the URL of a public list and press
+**Add source**. Repeat for as many as you want, then press **Rebuild pool**.
 
-The same thing from the API, or from a shell on the panel host:
+The panel ships with no source list of its own. Which lists to trust is a decision about
+whose servers your users' traffic will pass through, and it belongs to whoever runs the
+panel - so there is nothing here to accept by default and nothing to un-choose.
 
-```bash
-curl -X POST https://panel.example.com/api/free-configs/sources/defaults \
-  -H "Authorization: Bearer $TOKEN"
-
-# or, inside the container
-python3 scripts/seed_free_configs.py
-python3 scripts/seed_free_configs.py --list
-```
-
-That default list is the one published by
-[patterniha/free-configs](https://github.com/patterniha/free-configs) (MIT), plus that
-project's own aggregated output as a tenth source. None of its code is used here — this
-is an independent implementation of the same idea: aggregate several public lists, then
-filter by real connectivity instead of trusting the list. Sources are ordinary DB rows,
-so add, disable or remove any of them at will.
-
-…or add your own through the API:
+The same thing from the API:
 
 ```bash
 curl -X POST https://panel.example.com/api/free-configs/sources \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"url": "https://example.com/list.txt", "remark": "my list", "is_base64": false}'
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com/list.txt", "remark": "somebody'"'"'s list"}'
 ```
+
+A source whose whole body is base64 rather than one URI per line needs
+`"is_base64": true`, or the checkbox beside the field in the panel.
 
 ### 4. Choose who gets them
 
@@ -333,7 +322,6 @@ app/free_configs/{__init__,models,parser,fetcher,crud,service,schemas,subscripti
 app/jobs/free_configs.py
 app/routers/free_configs.py
 app/db/migrations/versions/9f2c1a7b4e05_add_free_configs_tables.py
-scripts/seed_free_configs.py
 tests/test_free_configs_parser.py
 install.sh
 .github/workflows/build-fork.yml

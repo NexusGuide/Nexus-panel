@@ -158,8 +158,8 @@ The installer here is not theirs: `install.sh` is written from scratch for this 
 because PasarGuard's installer scripts are published without a licence and so cannot be
 copied or redistributed.
 
-The default community source lists are public collections maintained by their own
-authors, credited in [FREE_CONFIGS.md](FREE_CONFIGS.md).
+No source lists ship with the panel. Which lists to trust is a decision about whose
+servers your users' traffic passes through, and it belongs to whoever runs the panel.
 
 ## License
 

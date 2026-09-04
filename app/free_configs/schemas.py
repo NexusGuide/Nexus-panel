@@ -58,6 +58,9 @@ class FreeConfigResponse(BaseModel):
     note: str | None = None
     latency_ms: int | None = None
     last_checked_at: dt | None = None
+    # groups this config is assigned to, so the pool table can show that
+    # "add to group" did something
+    group_ids: list[int] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 

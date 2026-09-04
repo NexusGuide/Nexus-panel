@@ -188,7 +188,7 @@ async def get_status(db: AsyncSession = Depends(get_db), _: AdminDetails = Depen
     )
 
 
-def _to_response(config, override) -> FreeConfigResponse:
+def _to_response(config, override, group_ids: list[int] | None = None) -> FreeConfigResponse:
     return FreeConfigResponse(
         id=config.id,
         uri=config.uri,
@@ -203,6 +203,7 @@ def _to_response(config, override) -> FreeConfigResponse:
         note=override.note if override else None,
         latency_ms=config.latency_ms,
         last_checked_at=config.last_checked_at,
+        group_ids=group_ids or [],
     )
 
 
@@ -220,8 +221,9 @@ async def list_configs(
     rows, total = await crud.get_configs_page(
         db, search=search, protocol=protocol, status=status_filter, offset=offset, limit=limit
     )
+    assignments = await crud.get_assignments_map(db, [config.uri_hash for config, _ in rows])
     return FreeConfigPage(
-        items=[_to_response(config, override) for config, override in rows],
+        items=[_to_response(config, override, assignments.get(config.uri_hash)) for config, override in rows],
         total=total,
         offset=offset,
         limit=limit,
@@ -316,6 +318,26 @@ async def bulk_update_configs(
     changed = await crud.set_overrides_bulk(db, payload.uri_hashes, payload.is_enabled)
     await service.invalidate_pool_cache()
     return {"changed": changed}
+
+
+@router.post("/configs/delete")
+async def delete_configs(
+    payload: CandidateSelection,
+    db: AsyncSession = Depends(get_db),
+    _: AdminDetails = Depends(require_owner),
+):
+    """Remove configs from the pool for good.
+
+    Distinct from switching one off, which leaves it in the table and in the
+    way. This takes the row out, along with its group assignments and its
+    override, so nothing puts it back by itself. A harvested config can still
+    be promoted from the tray again - that is the owner asking for it a second
+    time, not it creeping back.
+    """
+    deleted = await crud.delete_configs(db, payload.uri_hashes)
+    await service.invalidate_pool_cache()
+    await service.invalidate_access_cache()
+    return {"deleted": deleted}
 
 
 @router.post("/configs/manual", response_model=FreeConfigResponse, status_code=status.HTTP_201_CREATED)

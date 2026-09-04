@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Free Configs</title>
+<link rel="stylesheet" href="/statics/fonts/fonts.css">
 <style>
   /* Colours follow the dashboard's own light/dark switch. The page is embedded
      in it, so it has to change with it rather than pick a side. */
@@ -20,9 +21,13 @@
   * { box-sizing: border-box; }
   body {
     margin: 0; padding: 16px; background: var(--bg); color: var(--fg);
-    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    /* The dashboard's own faces, served from the same origin. Vazirmatn first
+       so Persian text matches the panel around it rather than falling back to
+       whatever the device has; Inter carries the Latin. */
+    font: 14px/1.6 Vazirmatn, Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-text-size-adjust: 100%;
   }
-  h2 { margin: 0 0 2px; font-size: 16px; }
+  h2 { margin: 0 0 2px; font-size: 16px; font-weight: 600; }
   .sub { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
   .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
   .grow { flex: 1 1 220px; }
@@ -40,6 +45,8 @@
   button:disabled { opacity: .5; cursor: not-allowed; }
   button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
   button.primary:hover:not(:disabled) { filter: brightness(1.08); background: var(--accent); }
+  button.danger { color: var(--bad); border-color: var(--bad); }
+  button.danger:hover:not(:disabled) { background: var(--bad); color: #fff; }
   .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
   .tabs button { border: 0; border-radius: 0; background: none; padding: 8px 14px; color: var(--muted); border-bottom: 2px solid transparent; }
   .tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); font-weight: 600; }
@@ -79,6 +86,44 @@
   .section { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
   #uriPreview { width: 100%; min-height: 74px; font-family: ui-monospace, monospace; font-size: 12px; resize: vertical; }
   tr.clickable td:not(.actions):not(.namecell) { cursor: pointer; }
+
+  /* The tab strip is the first thing to break on a narrow screen: six tabs do
+     not fit, and wrapping them turns the header into three lines of chrome
+     before any content. Scroll it sideways instead, the way the rest of the
+     page already scrolls its tables. */
+  .tabs { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs button { white-space: nowrap; flex: 0 0 auto; }
+
+  @media (max-width: 700px) {
+    body { padding: 12px; }
+    .cards { grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: 6px; }
+    .card { padding: 8px 10px; }
+    .card .v { font-size: 17px; }
+    .tabs button { padding: 8px 10px; }
+
+    /* Toolbars: on a phone a row of half-width controls is unreadable and
+       unhittable. One thing per line, full width, thumb-sized. */
+    .row { gap: 6px; }
+    .row > input, .row > select, .row > button { flex: 1 1 100%; min-height: 40px; }
+    .row > input[type="checkbox"] { flex: 0 0 auto; min-height: 0; }
+    .row > span { flex: 1 1 100%; }
+    .grow { flex: 1 1 100%; }
+
+    /* Tables stay tables and keep scrolling sideways - a proxy list is columns
+       of short values, and stacking each row into a card makes it longer to
+       read, not shorter. Just stop the URI column from setting a 340px floor. */
+    table { min-width: 620px; }
+    th, td { padding: 7px 8px; }
+    td.uri { max-width: 180px; }
+
+    /* A dialog on a phone is a screen, not a floating box. */
+    #overlay.show { padding: 0; place-items: stretch; }
+    #editor { width: 100%; max-height: 100%; height: 100%; border: 0; border-radius: 0; }
+    .frow { grid-template-columns: 1fr; gap: 4px; }
+    .frow > label { font-size: 12px; }
+    #toast { inset-inline: 12px; inset-block-end: 12px; text-align: center; }
+  }
 </style>
 </head>
 <body>
@@ -131,6 +176,7 @@
     <span class="muted" style="margin-inline-start:8px" data-i18n="bulk.profile">Profile:</span>
     <select id="poolProfile" style="min-width:150px"><option value="">Apply profile...</option></select>
     <button id="applyProfile" disabled data-i18n="bulk.applyToSelected">Apply to selected</button>
+    <button id="bulkDelete" disabled class="danger" data-i18n="bulk.delete">Delete selected</button>
   </div>
 
   <div class="wrap">
@@ -138,7 +184,7 @@
       <thead><tr>
         <th style="width:28px"><input type="checkbox" id="selall"></th>
         <th data-i18n="col.on">On</th><th data-i18n="col.protocol">Protocol</th><th data-i18n="col.address">Address</th><th data-i18n="col.sni">SNI / Host</th><th data-i18n="col.port">Port</th>
-        <th data-i18n="col.latency">Latency</th><th data-i18n="col.state">State</th><th data-i18n="col.name">Name</th><th data-i18n="col.uri">URI</th><th></th>
+        <th data-i18n="col.latency">Latency</th><th data-i18n="col.state">State</th><th data-i18n="col.groups">Groups</th><th data-i18n="col.name">Name</th><th data-i18n="col.uri">URI</th><th></th>
       </tr></thead>
       <tbody id="rows"></tbody>
     </table>
@@ -323,14 +369,27 @@
   // baked into the HTML - every read still goes through the owner-only API.
   const token = () => { try { return localStorage.getItem('token') || ''; } catch { return ''; } };
 
+  const darkQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
   function syncTheme() {
-    // Inside the dashboard we follow its <html data-theme>; standalone we follow the OS.
-    let dark = false;
+    // Three sources, most authoritative first. The dashboard puts the resolved
+    // mode on its own <html> as a class, which already accounts for its
+    // "system" setting - so when we are embedded, that is the answer. Outside
+    // the frame, or if reading across ever fails, the same choice is in
+    // localStorage on this origin; "system" or nothing left means ask the OS.
+    let dark = null;
     try {
-      const parentTheme = window.parent !== window ? window.parent.document.documentElement : null;
-      if (parentTheme) dark = parentTheme.classList.contains('dark') || parentTheme.dataset.theme === 'dark';
-      else dark = matchMedia('(prefers-color-scheme: dark)').matches;
-    } catch { dark = matchMedia('(prefers-color-scheme: dark)').matches; }
+      const parentRoot = window.parent !== window ? window.parent.document.documentElement : null;
+      if (parentRoot) dark = parentRoot.classList.contains('dark') || parentRoot.dataset.theme === 'dark';
+    } catch { dark = null; }
+
+    if (dark === null) {
+      let saved = '';
+      try { saved = (localStorage.getItem('theme') || '').replace(/^"|"$/g, ''); } catch { saved = ''; }
+      if (saved === 'dark') dark = true;
+      else if (saved === 'light') dark = false;
+      else dark = !!(darkQuery && darkQuery.matches);
+    }
     document.documentElement.dataset.theme = dark ? 'dark' : 'light';
   }
 
@@ -446,6 +505,16 @@
       'run.noSources': 'No sources are switched on, so there was nothing to fetch. Add one on the Sources tab.',
       'run.finished': 'Rebuild finished',
       'run.stillRunning': 'The rebuild is still going after ten minutes. Check the panel logs.',
+      'col.groups': 'Groups', 'bulk.delete': 'Delete selected',
+      'action.reset': 'Reset',
+      'pool.empty': 'Nothing here yet. Add a source, rebuild the pool, then add candidates.',
+      'pool.resetTitle': 'Forget this override - a manual entry is removed, a harvested one re-enabled',
+      'pool.deleteTitle': 'Remove from the pool for good',
+      'pool.confirmDelete': 'Remove {n} config(s) from the pool? They leave their groups too, and only come back if you add them from Candidates again.',
+      'pool.deleted': '{n} removed from the pool',
+      'bulk.added': '{n} added to the group', 'bulk.removed': '{n} removed',
+      'bulk.wholePool': 'it now gets the whole pool',
+      'bulk.groupOff': 'but this group is not switched on for free configs, so its users receive none. Turn it on in the Groups tab.',
       'set.default': 'Default ({v})', 'set.on': 'On', 'set.off': 'Off',
       'set.featureIs': 'The feature is', 'set.active': 'active',
       'set.switchedOff': 'switched off from this page',
@@ -541,6 +610,16 @@
       'run.noSources': 'هیچ منبعی روشن نیست، پس چیزی برای گرفتن نبود. از تب منابع یکی اضافه کن.',
       'run.finished': 'بازسازی تمام شد',
       'run.stillRunning': 'بازسازی بعد از ده دقیقه هنوز تمام نشده. لاگ پنل را ببین.',
+      'col.groups': 'گروه‌ها', 'bulk.delete': 'حذف انتخاب‌شده‌ها',
+      'action.reset': 'بازنشانی',
+      'pool.empty': 'هنوز چیزی اینجا نیست. یک منبع اضافه کن، استخر را بازسازی کن، بعد از کاندیداها انتخاب کن.',
+      'pool.resetTitle': 'فراموش‌کردن تنظیم دستی — مورد دستی حذف می‌شود و مورد جمع‌آوری‌شده دوباره روشن',
+      'pool.deleteTitle': 'حذف کامل از استخر',
+      'pool.confirmDelete': '{n} کانفیگ از استخر حذف شود؟ از گروه‌هایشان هم بیرون می‌روند و فقط اگر دوباره از کاندیداها اضافه کنی برمی‌گردند.',
+      'pool.deleted': '{n} از استخر حذف شد',
+      'bulk.added': '{n} به گروه اضافه شد', 'bulk.removed': '{n} حذف شد',
+      'bulk.wholePool': 'حالا کل استخر را می‌گیرد',
+      'bulk.groupOff': 'ولی این گروه برای کانفیگ‌های رایگان روشن نیست، پس کاربرانش چیزی نمی‌گیرند. از تب گروه‌ها روشنش کن.',
       'settings.lead': 'فیلد خالی یعنی «همان مقدار .env استفاده شود». FREE_CONFIGS_ENABLED عمداً اینجا نیست: این صفحه می‌تواند قابلیت را خاموش کند، هرگز روشن — تا پنلی که از اول این را نخواسته با یک فرم وب فعال نشود.',
       'set.default': 'پیش‌فرض ({v})', 'set.on': 'روشن', 'set.off': 'خاموش',
       'set.featureIs': 'وضعیت قابلیت:', 'set.active': 'فعال',
@@ -652,6 +731,16 @@
       'run.noSources': 'Ни один источник не включён, загружать было нечего. Добавьте его во вкладке «Источники».',
       'run.finished': 'Перестройка завершена',
       'run.stillRunning': 'Перестройка идёт уже десять минут. Посмотрите логи панели.',
+      'col.groups': 'Группы', 'bulk.delete': 'Удалить выбранные',
+      'action.reset': 'Сбросить',
+      'pool.empty': 'Здесь пока пусто. Добавьте источник, перестройте пул и выберите из кандидатов.',
+      'pool.resetTitle': 'Забыть это решение — ручная запись удаляется, собранная снова включается',
+      'pool.deleteTitle': 'Убрать из пула окончательно',
+      'pool.confirmDelete': 'Убрать {n} конфиг(ов) из пула? Они также покинут свои группы и вернутся, только если добавить их из «Кандидатов» снова.',
+      'pool.deleted': 'убрано из пула: {n}',
+      'bulk.added': 'добавлено в группу: {n}', 'bulk.removed': 'удалено: {n}',
+      'bulk.wholePool': 'теперь она получает весь пул',
+      'bulk.groupOff': 'но эта группа не включена для бесплатных конфигов, так что её пользователи ничего не получат. Включите её во вкладке «Группы».',
       'settings.lead': 'Пустое поле означает «взять значение из .env». FREE_CONFIGS_ENABLED здесь нет намеренно: эта страница может только выключить функцию, но не включить — панель, которая её не включала, нельзя активировать из веб-формы.',
       'set.default': 'По умолчанию ({v})', 'set.on': 'Вкл', 'set.off': 'Выкл',
       'set.featureIs': 'Состояние функции:', 'set.active': 'активна',
@@ -763,6 +852,16 @@
       'run.noSources': '没有启用任何订阅源，所以没有内容可抓取。请到「订阅源」标签页添加。',
       'run.finished': '重建完成',
       'run.stillRunning': '重建已经进行十分钟仍未结束，请查看面板日志。',
+      'col.groups': '分组', 'bulk.delete': '删除所选',
+      'action.reset': '重置',
+      'pool.empty': '这里还没有内容。先添加订阅源，重建池，再从候选中挑选。',
+      'pool.resetTitle': '忘掉这条决定 —— 手动添加的会被删除，抓取来的会重新启用',
+      'pool.deleteTitle': '从池中彻底移除',
+      'pool.confirmDelete': '从池中移除 {n} 条配置？它们也会离开所属分组，只有再次从候选中添加才会回来。',
+      'pool.deleted': '已从池中移除 {n} 条',
+      'bulk.added': '已添加到分组 {n} 条', 'bulk.removed': '已移除 {n} 条',
+      'bulk.wholePool': '现在它将获得整个池',
+      'bulk.groupOff': '但该分组尚未为免费配置启用，所以它的用户什么也收不到。请在「分组」标签页中启用。',
       'settings.lead': '留空表示「使用 .env 中的值」。FREE_CONFIGS_ENABLED 故意不在此处：本页只能关闭该功能，不能开启，这样从未启用过的面板就无法通过网页表单被打开。',
       'set.default': '默认（{v}）', 'set.on': '开', 'set.off': '关',
       'set.featureIs': '功能状态：', 'set.active': '已启用',
@@ -820,6 +919,12 @@
 
   let LANG = 'en';
 
+  if (darkQuery) {
+    const onSchemeChange = () => syncTheme();
+    if (darkQuery.addEventListener) darkQuery.addEventListener('change', onSchemeChange);
+    else if (darkQuery.addListener) darkQuery.addListener(onSchemeChange);
+  }
+
   function detectLanguage() {
     // i18next stores the choice under this key, sometimes quoted or as a region
     // tag like "fa-IR"; take the first two letters and accept what we know.
@@ -864,6 +969,7 @@
   // fires in this document because it is the same origin. That is what makes
   // switching language in the sidebar re-render this page immediately.
   window.addEventListener('storage', event => {
+    if (event.key === 'theme') syncTheme();
     if (event.key && !['i18nextLng', 'lang'].includes(event.key)) return;
     const before = LANG;
     applyTranslations();
@@ -923,10 +1029,18 @@
 
   // ---------------------------------------------------------------- pool
 
+  // The API returns group ids; the owner picked group names. Fall back to the
+  // id when a group has been deleted since, rather than showing nothing.
+  function groupNames(ids) {
+    if (!ids || !ids.length) return '<span class="muted">-</span>';
+    const byId = new Map((state.groups || []).map(g => [g.id, g.name]));
+    return esc(ids.map(id => byId.get(id) || ('#' + id)).join(', '));
+  }
+
   function renderRows(items) {
     const rows = document.getElementById('rows');
     if (!items.length) {
-      rows.innerHTML = `<tr><td colspan="11" class="empty">Nothing here yet. Add a source, then rebuild the pool.</td></tr>`;
+      rows.innerHTML = `<tr><td colspan="12" class="empty">${esc(t('pool.empty'))}</td></tr>`;
       return;
     }
     rows.innerHTML = items.map(c => `
@@ -942,11 +1056,13 @@
           ${c.is_manual ? '<span class="pill man">manual</span> ' : ''}
           ${c.is_healthy ? '<span class="pill ok">reachable</span>' : '<span class="pill bad">no answer</span>'}
         </td>
+        <td>${groupNames(c.group_ids)}</td>
         <td class="namecell"><input class="rename" data-hash="${esc(c.uri_hash)}" value="${esc(c.remark || '')}" placeholder="-" style="width:130px"></td>
         <td class="uri" title="${esc(c.uri)}">${esc(c.uri)}</td>
         <td class="actions">
-          <button class="edit" data-hash="${esc(c.uri_hash)}">Edit</button>
-          <button class="del" data-hash="${esc(c.uri_hash)}" title="Forget this override">Reset</button>
+          <button class="edit" data-hash="${esc(c.uri_hash)}">${esc(t('action.edit'))}</button>
+          <button class="del" data-hash="${esc(c.uri_hash)}" title="${esc(t('pool.resetTitle'))}">${esc(t('action.reset'))}</button>
+          <button class="drop danger" data-hash="${esc(c.uri_hash)}" title="${esc(t('pool.deleteTitle'))}">${esc(t('action.delete'))}</button>
         </td>
       </tr>`).join('');
   }
@@ -996,6 +1112,7 @@
     document.getElementById('selcount').textContent = state.selected.size + ' ' + t('selected');
     const none = state.selected.size === 0;
     document.getElementById('applyProfile').disabled = none;
+    document.getElementById('bulkDelete').disabled = none;
     document.getElementById('bulkOn').disabled = none;
     document.getElementById('bulkOff').disabled = none;
     document.getElementById('bulkAssign').disabled = none;
@@ -1021,9 +1138,26 @@
     } catch (err) { toast(err.message); loadPool(); }
   });
 
+  async function deleteFromPool(hashes) {
+    if (!hashes.length) return;
+    if (!confirm(t('pool.confirmDelete').replace('{n}', hashes.length))) return;
+    try {
+      const result = await api('/configs/delete', { method: 'POST', body: JSON.stringify({ uri_hashes: hashes }) });
+      toast(t('pool.deleted').replace('{n}', result.deleted));
+      clearSelection();
+      await Promise.all([loadPool(), loadStatus()]);
+    } catch (err) { toast(err.message); }
+  }
+
+  document.getElementById('bulkDelete').onclick = () => deleteFromPool([...state.selected]);
+
   document.getElementById('rows').addEventListener('click', async e => {
     if (e.target.classList.contains('edit')) {
       openEditor(e.target.dataset.hash);
+      return;
+    }
+    if (e.target.classList.contains('drop')) {
+      deleteFromPool([e.target.dataset.hash]);
       return;
     }
     // clicking anywhere on the row opens it too, except the controls
@@ -1417,11 +1551,20 @@
         method: 'POST',
         body: JSON.stringify({ uri_hashes: [...state.selected], action }),
       });
-      toast(action === 'add'
-        ? `${result.changed} added to the group`
-        : `${result.changed} removed` + (result.gets_whole_pool ? ' - it now gets the whole pool' : ''));
+      // A group that has not been opted in receives nothing, whatever is
+      // assigned to it. Assigning into one looks like it worked and changes
+      // nothing a user would ever see, so say which it is.
+      const group = (state.groups || []).find(g => String(g.id) === String(groupId));
+      const inactive = group && !group.receives_free_configs;
+      let message = action === 'add'
+        ? t('bulk.added').replace('{n}', result.changed)
+        : t('bulk.removed').replace('{n}', result.changed) +
+          (result.gets_whole_pool ? ' - ' + t('bulk.wholePool') : '');
+      if (action === 'add' && inactive) message += ' - ' + t('bulk.groupOff');
+      toast(message);
       clearSelection();
-      loadGroups();
+      await loadGroups();
+      await loadPool();
     } catch (err) { toast(err.message); }
   }
   document.getElementById('bulkAssign').onclick = () => bulkGroup('add');
@@ -1875,18 +2018,22 @@
   // ---------------------------------------------------------------- boot
 
   syncTheme();
-  setInterval(syncTheme, 1500);
+  // The storage and media-query listeners above catch every change the
+  // dashboard makes. This is only a backstop for a theme switch that somehow
+  // reaches neither, and no longer a poll running four times a minute forever.
+  setInterval(syncTheme, 15000);
   updateSelectionUI();
 
   (async () => {
     try {
       await loadSettings();
       await loadStatus();
-      await loadPool();
+      // before the pool, because its rows name the groups each config is in
       await loadGroups();
+      await loadPool();
     } catch (err) {
       document.getElementById('rows').innerHTML =
-        `<tr><td colspan="11" class="empty">${esc(err.message)}</td></tr>`;
+        `<tr><td colspan="12" class="empty">${esc(err.message)}</td></tr>`;
       toast(err.message);
     }
   })();

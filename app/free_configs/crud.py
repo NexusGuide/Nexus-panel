@@ -584,6 +584,41 @@ async def set_override(
     return override
 
 
+async def delete_configs(db: AsyncSession, uri_hashes: list[str]) -> int:
+    """Take configs out of the pool for good.
+
+    Switching a config off leaves it in the table, still visible, still counted -
+    which is right for "not this one for now" and wrong for "I never want to see
+    this again". This is the second thing: the row goes, and so does everything
+    that would put it back or point at it.
+
+    Three things have to go together or it comes back on its own:
+
+      * the pool row itself;
+      * any group assignments, which would otherwise be dangling references to
+        a config no longer in the pool;
+      * the override, because a manual entry lives there and refresh_manual_configs
+        re-inserts it into the pool after every rebuild.
+
+    A harvested config can still return by being promoted from the tray again -
+    that is the owner asking for it a second time, which is not the same as it
+    creeping back by itself.
+    """
+    wanted = [h for h in dict.fromkeys(uri_hashes) if h]
+    if not wanted:
+        return 0
+
+    deleted = 0
+    for start in range(0, len(wanted), IN_CHUNK_SIZE):
+        chunk = wanted[start : start + IN_CHUNK_SIZE]
+        await db.execute(delete(FreeConfigGroupConfig).where(FreeConfigGroupConfig.uri_hash.in_(chunk)))
+        await db.execute(delete(FreeConfigOverride).where(FreeConfigOverride.uri_hash.in_(chunk)))
+        result = await db.execute(delete(FreeConfig).where(FreeConfig.uri_hash.in_(chunk)))
+        deleted += result.rowcount or 0
+    await db.commit()
+    return deleted
+
+
 async def clear_override(db: AsyncSession, uri_hash: str) -> bool:
     """Forget an override entirely. Manual entries also leave the pool."""
     override = await get_override(db, uri_hash)
@@ -713,6 +748,30 @@ async def set_group_assignments(db: AsyncSession, group_id: int, uri_hashes: lis
         db.add_all([FreeConfigGroupConfig(group_id=group_id, uri_hash=h) for h in wanted])
     await db.commit()
     return len(wanted)
+
+
+async def get_assignments_map(db: AsyncSession, uri_hashes: list[str]) -> dict[str, list[int]]:
+    """Which groups each of these configs is assigned to.
+
+    Adding a config to a group used to leave no trace anywhere the owner could
+    see - the toast said it worked and every screen looked identical, which is
+    indistinguishable from a button that does nothing. This is what the pool
+    table needs to show it.
+    """
+    wanted = [h for h in dict.fromkeys(uri_hashes) if h]
+    if not wanted:
+        return {}
+    out: dict[str, list[int]] = {}
+    for start in range(0, len(wanted), IN_CHUNK_SIZE):
+        chunk = wanted[start : start + IN_CHUNK_SIZE]
+        rows = await db.execute(
+            select(FreeConfigGroupConfig.uri_hash, FreeConfigGroupConfig.group_id).where(
+                FreeConfigGroupConfig.uri_hash.in_(chunk)
+            )
+        )
+        for uri_hash, group_id in rows.all():
+            out.setdefault(uri_hash, []).append(group_id)
+    return out
 
 
 async def add_group_assignments(db: AsyncSession, group_id: int, uri_hashes: list[str]) -> int:
